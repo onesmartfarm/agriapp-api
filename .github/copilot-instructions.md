@@ -8,16 +8,19 @@ Architecture: Clean Architecture (Modular Monolith).
   - /src/AgriApp.Application: Service classes (EquipmentService, InquiryService, WorkOrderService), GST/Commission calculators using decimal, DTOs with DataAnnotations validation. Depends on Core + Infrastructure.
   - /src/AgriApp.Api: ASP.NET Core Controllers, JWT Bearer authentication, Swagger/OpenAPI, CurrentUser middleware. Depends on all layers.
 
-Security Rules (Non-Negotiable):
-  1. Global Query Filters: EF Core HasQueryFilter on Equipment, Inquiries, and WorkOrders filters by CenterId from ICurrentUser claims. SuperUser bypasses all filters.
-  2. Salesperson Privacy: Inquiry HasQueryFilter enforces that Sales users ONLY see records where SalespersonId == CurrentUserId. This is a hard security rule.
-  3. Registration is restricted to SuperUser and Manager roles only. Open self-registration is forbidden.
-  4. JWT secret must come from SESSION_SECRET environment variable. No hardcoded fallback keys.
+Security Rules (Non-Negotiable) — "Confidence-Back" Data Isolation:
+  These filters are ACTIVE AT THE DATABASE LEVEL via EF Core Global Query Filters in AgriDbContext.OnModelCreating.
+  1. Global Query Filters: EF Core HasQueryFilter on Equipment, Inquiries, and WorkOrders filters by CenterId from ICurrentUser claims (injected into DbContext constructor). SuperUser bypasses ALL filters — sees everything across the entire company.
+  2. Salesperson Privacy: Inquiry HasQueryFilter enforces that Sales role users can ONLY see records where SalespersonId == CurrentUserId. Combined with CenterId filter. This is a HARD SECURITY RULE at the database query level.
+  3. Registration is restricted to SuperUser and Manager roles only. Open self-registration is forbidden. Managers cannot escalate to SuperUser/Manager roles.
+  4. Cross-tenant write protection: Non-SuperUser users are forced to their own CenterId on all create operations. The request payload CenterId is ignored for non-SuperUser.
+  5. JWT secret must come from SESSION_SECRET environment variable. No hardcoded fallback keys.
 
 Financial Accuracy:
-  - All currency fields use decimal type (C#) and numeric(10,2) in PostgreSQL.
+  - All currency fields use decimal type (C#) and numeric(18,2) in PostgreSQL — configured via HasPrecision(18, 2) in AgriDbContext.
   - GST calculations use decimal arithmetic with MidpointRounding.AwayFromZero.
   - Commission calculations use decimal arithmetic. No float/double for money.
+  - Any future entity with a currency/rate/commission field MUST be configured with HasPrecision(18, 2) in the DbContext.
 
 Audit Trail:
   - EF Core SaveChangesInterceptor (AuditInterceptor) automatically logs all Create/Update/Delete actions to the audit_logs table.
