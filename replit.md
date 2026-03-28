@@ -20,21 +20,21 @@ C# 12 / .NET 8 Clean Architecture backend API for managing agricultural equipmen
 AgriApp.sln
 src/
 ├── AgriApp.Core/              # Domain layer (zero dependencies)
-│   ├── Entities/              # Center, User, Equipment, Inquiry, WorkOrder, AuditLog
-│   ├── Enums/                 # Role, WorkStatus, EquipmentCategory, InquiryStatus
+│   ├── Entities/              # Center, User, Equipment, Inquiry, WorkOrder, AuditLog, Attendance, SalaryStructure, CommissionLedger
+│   ├── Enums/                 # Role, WorkStatus, EquipmentCategory, InquiryStatus, AttendanceType, CommissionStatus
 │   └── Interfaces/            # ICurrentUser, ICenterScoped, IAuditable
 ├── AgriApp.Infrastructure/    # Data access layer
 │   ├── Data/
 │   │   ├── AgriDbContext.cs   # EF Core context with Global Query Filters
 │   │   └── Migrations/        # EF Core migrations
 │   ├── Interceptors/
-│   │   └── AuditInterceptor.cs # SaveChangesInterceptor for audit trail
+│   │   └── AuditInterceptor.cs # SaveChangesInterceptor for audit trail + CommissionRealized tracking
 │   └── Repositories/          # UserRepository, EquipmentRepository, InquiryRepository, WorkOrderRepository
 ├── AgriApp.Application/       # Business logic layer
 │   ├── DTOs/                  # Request/Response DTOs with DataAnnotations
-│   └── Services/              # EquipmentService, InquiryService, WorkOrderService, GstCalculator, CommissionCalculator
+│   └── Services/              # EquipmentService, InquiryService, WorkOrderService, GstCalculator, CommissionCalculator, CommissionRealizationService, PayrollService
 └── AgriApp.Api/               # Presentation layer
-    ├── Controllers/           # AuthController, EquipmentController, InquiriesController, WorkOrdersController, UsersController, HealthController
+    ├── Controllers/           # Auth, Equipment, Inquiries, WorkOrders, Users, Health, Attendance, Payroll, Payment, SalaryStructure
     ├── Middleware/             # CurrentUser (ICurrentUser implementation from JWT claims)
     ├── Program.cs             # DI registration, JWT config, EF Core setup, seed data
     └── appsettings.json       # Configuration
@@ -42,7 +42,7 @@ src/
 
 ## Security Model
 
-- **CenterId Global Query Filter**: Equipment, Inquiries, and WorkOrders are automatically filtered by the user's CenterId
+- **CenterId Global Query Filter**: Equipment, Inquiries, WorkOrders, Attendance, SalaryStructure, CommissionLedger are automatically filtered by the user's CenterId
 - **Sales Ownership Privacy**: Sales users ONLY see Inquiries where `SalespersonId == CurrentUserId`
 - **SuperUser Bypass**: SuperUser role ignores all CenterId and ownership filters
 - **Registration Restriction**: Only SuperUser and Manager can register new users
@@ -76,6 +76,15 @@ src/
 - `PATCH /api/work-orders/{id}/status` — Update work order status
 - `GET /api/users` — List users (Manager/SuperUser)
 - `GET /api/users/me` — Current user profile
+- `POST /api/attendance/clock` — Clock in/out with GPS coordinates
+- `GET /api/attendance/my` — My attendance records
+- `GET /api/attendance` — All attendance (Manager/SuperUser)
+- `POST /api/salary-structures` — Create salary structure (Manager/SuperUser)
+- `PUT /api/salary-structures/{userId}` — Update salary structure
+- `GET /api/salary-structures` — List all salary structures
+- `GET /api/salary-structures/{userId}` — Get salary by user
+- `GET /api/payroll/report` — Payroll report (Manager/SuperUser)
+- `POST /api/payment/webhook` — Realize commissions via UPI payment
 - `GET /swagger` — Swagger UI documentation
 - `GET /api/healthz` — Health check
 

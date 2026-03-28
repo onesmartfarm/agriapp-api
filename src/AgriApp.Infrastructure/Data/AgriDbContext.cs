@@ -21,6 +21,9 @@ public class AgriDbContext : DbContext
     public DbSet<Inquiry> Inquiries => Set<Inquiry>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Attendance> Attendances => Set<Attendance>();
+    public DbSet<SalaryStructure> SalaryStructures => Set<SalaryStructure>();
+    public DbSet<CommissionLedger> CommissionLedgers => Set<CommissionLedger>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +35,9 @@ public class AgriDbContext : DbContext
         ConfigureInquiry(modelBuilder);
         ConfigureWorkOrder(modelBuilder);
         ConfigureAuditLog(modelBuilder);
+        ConfigureAttendance(modelBuilder);
+        ConfigureSalaryStructure(modelBuilder);
+        ConfigureCommissionLedger(modelBuilder);
     }
 
     private void ConfigureCenter(ModelBuilder modelBuilder)
@@ -158,6 +164,96 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.EntityName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.EntityId).HasMaxLength(50);
             entity.Property(e => e.Timestamp).HasDefaultValueSql("NOW()");
+        });
+    }
+
+    private void ConfigureAttendance(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Attendance>(entity =>
+        {
+            entity.ToTable("attendances");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Latitude).HasPrecision(18, 6).IsRequired();
+            entity.Property(e => e.Longitude).HasPrecision(18, 6).IsRequired();
+            entity.Property(e => e.Type).HasConversion<string>().IsRequired();
+            entity.Property(e => e.Timestamp).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Center)
+                  .WithMany()
+                  .HasForeignKey(e => e.CenterId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e =>
+                _currentUser == null ||
+                _currentUser.Role == Role.SuperUser ||
+                e.CenterId == _currentUser.CenterId);
+        });
+    }
+
+    private void ConfigureSalaryStructure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SalaryStructure>(entity =>
+        {
+            entity.ToTable("salary_structures");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.BaseSalary).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.CommissionPercentage).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Center)
+                  .WithMany()
+                  .HasForeignKey(e => e.CenterId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.UserId).IsUnique();
+
+            entity.HasQueryFilter(e =>
+                _currentUser == null ||
+                _currentUser.Role == Role.SuperUser ||
+                e.CenterId == _currentUser.CenterId);
+        });
+    }
+
+    private void ConfigureCommissionLedger(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CommissionLedger>(entity =>
+        {
+            entity.ToTable("commission_ledgers");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().IsRequired();
+            entity.Property(e => e.UpiTransactionId).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.Inquiry)
+                  .WithMany()
+                  .HasForeignKey(e => e.InquiryId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Center)
+                  .WithMany()
+                  .HasForeignKey(e => e.CenterId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e =>
+                _currentUser == null ||
+                _currentUser.Role == Role.SuperUser ||
+                e.CenterId == _currentUser.CenterId);
         });
     }
 }

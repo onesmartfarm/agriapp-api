@@ -1,0 +1,43 @@
+System Instruction: Execute Stage 2 (Attendance, GPS, and Payroll Realization)
+
+Context: The project is a .NET 8 Clean Architecture API (/Core, /Application, /Infrastructure, /Api). The ApplicationDbContext currently uses ICurrentUserService for strict CenterId filtering and Salesperson privacy. Do NOT modify the existing security foundation.
+
+Goal: Implement GPS-verified attendance and payment-triggered salary realization.
+
+1. New Domain Entities (in /src/AgriApp.Core/Entities):
+
+Attendance: Id, UserId (FK), CenterId (FK), Timestamp, Latitude (decimal 18,6), Longitude (decimal 18,6), Type (Enum: ClockIn, ClockOut).
+
+SalaryStructure: Id, UserId (FK), CenterId (FK), BaseSalary (decimal 18,2), CommissionPercentage (decimal 18,2).
+
+CommissionLedger: Id, InquiryId (FK), UserId (FK), CenterId (FK), Amount (decimal 18,2), Status (Enum: Pending, Realized), UpiTransactionId (nullable string).
+
+2. Infrastructure Updates (in /src/AgriApp.Infrastructure):
+
+Add the new entities to ApplicationDbContext.
+
+Critical Security: Apply the exact same HasQueryFilter(e => e.CenterId == _currentUser.CenterId) to Attendance, SalaryStructure, and CommissionLedger.
+
+Audit Interceptor: Create an EF Core SaveChangesInterceptor. If a CommissionLedger record's Status is modified to Realized, automatically write a record to a new AuditLog table capturing the UserId, Timestamp, and the UpiTransactionId.
+
+3. Application Services (in /src/AgriApp.Application/Services):
+
+CommissionRealizationService: Create a method ConfirmPaymentAsync(string upiTransactionId, Guid inquiryId). This method must find all Pending commissions linked to that inquiry and update their status to Realized, attaching the UPI ID.
+
+PayrollService: Create a method CalculateMonthlyPay(Guid userId, int month, int year). Logic: Calculate total days present from Attendance. Formula: (BaseSalary * (DaysPresent / 30)) + Sum(Realized Commissions for the month).
+
+4. API Controllers (in /src/AgriApp.Api/Controllers):
+
+AttendanceController: POST /api/attendance/clock. Must accept Latitude and Longitude. Validation: Reject the request if GPS coordinates are missing (0,0).
+
+PayrollController: GET /api/payroll/report. Accessible only by Manager or SuperUser. Returns the calculated payroll for staff in their Center.
+
+PaymentController: POST /api/payment/webhook. A mock endpoint to receive a UpiTransactionId and trigger the CommissionRealizationService.
+
+5. Clarification Hook (Decision Gate):
+
+If you are unsure how to wire up the SaveChangesInterceptor for the Audit Log in .NET 8, STOP and ask me before generating the database migration.
+
+6. AI Documentation Sync:
+
+Append to .github/copilot-instructions.md: "Stage 2 Rule: Commissions are created as Pending. They only become Realized when a valid UpiTransactionId is supplied. Attendance requires strict GPS coordinates."

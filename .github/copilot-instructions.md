@@ -27,6 +27,14 @@ Audit Trail:
   - Audit records include UserId, Timestamp, Action, EntityName, EntityId, OldValue, NewValue.
   - Password fields are excluded from audit serialization.
 
+Stage 2 — Attendance, GPS & Payroll:
+  - Attendance requires strict GPS coordinates. Requests with (0,0) are rejected.
+  - Commissions are created as Pending. They only become Realized when a valid UpiTransactionId is supplied via the /api/payment/webhook endpoint.
+  - The AuditInterceptor specifically tracks CommissionLedger status transitions to Realized, capturing the UpiTransactionId in the audit log.
+  - Payroll formula: (BaseSalary × DaysPresent/30) + Sum(Realized Commissions for month).
+  - Global Query Filters apply to Attendance, SalaryStructure, and CommissionLedger (CenterId isolation, SuperUser bypass).
+  - SalaryStructure has a unique constraint on UserId (one salary structure per user).
+
 General Rules:
   - No UI code allowed. This is a backend-only API.
   - All DTOs must use DataAnnotations for input validation.
