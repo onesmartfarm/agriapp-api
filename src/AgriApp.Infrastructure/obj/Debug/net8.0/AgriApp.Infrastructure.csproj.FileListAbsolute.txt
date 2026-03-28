@@ -1,0 +1,17 @@
+/home/runner/workspace/src/AgriApp.Infrastructure/bin/Debug/net8.0/AgriApp.Infrastructure.deps.json
+/home/runner/workspace/src/AgriApp.Infrastructure/bin/Debug/net8.0/AgriApp.Infrastructure.runtimeconfig.json
+/home/runner/workspace/src/AgriApp.Infrastructure/bin/Debug/net8.0/AgriApp.Infrastructure.dll
+/home/runner/workspace/src/AgriApp.Infrastructure/bin/Debug/net8.0/AgriApp.Infrastructure.pdb
+/home/runner/workspace/src/AgriApp.Infrastructure/bin/Debug/net8.0/AgriApp.Core.dll
+/home/runner/workspace/src/AgriApp.Infrastructure/bin/Debug/net8.0/AgriApp.Core.pdb
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.csproj.AssemblyReference.cache
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.AssemblyInfoInputs.cache
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.AssemblyInfo.cs
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.csproj.CoreCompileInputs.cache
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp..126EAD60.Up2Date
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.dll
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/refint/AgriApp.Infrastructure.dll
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.pdb
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.genruntimeconfig.cache
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/ref/AgriApp.Infrastructure.dll
