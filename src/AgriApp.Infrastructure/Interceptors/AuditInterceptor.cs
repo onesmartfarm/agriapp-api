@@ -62,6 +62,32 @@ public class AuditInterceptor : SaveChangesInterceptor
             if (entry.Entity is AuditLog) continue;
             if (entry.State == EntityState.Detached || entry.State == EntityState.Unchanged) continue;
 
+            if (entry.Entity is CommissionLedger && entry.State == EntityState.Modified)
+            {
+                var statusProp = entry.Property("Status");
+                if (statusProp.IsModified &&
+                    statusProp.CurrentValue?.ToString() == "Realized" &&
+                    statusProp.OriginalValue?.ToString() != "Realized")
+                {
+                    var ledger = (CommissionLedger)entry.Entity;
+                    _pendingAudits.Add(new PendingAudit
+                    {
+                        Entry = entry,
+                        AuditLog = new AuditLog
+                        {
+                            UserId = userId,
+                            Timestamp = DateTime.UtcNow,
+                            Action = "CommissionRealized",
+                            EntityName = "CommissionLedger",
+                            EntityId = GetPrimaryKeyValue(entry),
+                            OldValue = $"Status={statusProp.OriginalValue}",
+                            NewValue = $"Status=Realized;UpiTransactionId={ledger.UpiTransactionId}"
+                        }
+                    });
+                    continue;
+                }
+            }
+
             var entityName = entry.Entity.GetType().Name;
 
             switch (entry.State)
