@@ -74,7 +74,7 @@ public class AgriDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(300);
             entity.Property(e => e.Category).HasConversion<string>().IsRequired();
-            entity.Property(e => e.HourlyRate).HasPrecision(10, 2).IsRequired();
+            entity.Property(e => e.HourlyRate).HasPrecision(18, 2).IsRequired();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.Center)
