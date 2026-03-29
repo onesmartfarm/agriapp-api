@@ -123,3 +123,5 @@
 /home/runner/workspace/src/AgriApp.Api/obj/Debug/net8.0/AgriApp.Api.pdb
 /home/runner/workspace/src/AgriApp.Api/obj/Debug/net8.0/AgriApp.Api.genruntimeconfig.cache
 /home/runner/workspace/src/AgriApp.Api/obj/Debug/net8.0/ref/AgriApp.Api.dll
+/home/runner/workspace/src/AgriApp.Api/bin/Debug/net8.0/DotNetEnv.dll
+/home/runner/workspace/src/AgriApp.Api/bin/Debug/net8.0/Sprache.dll

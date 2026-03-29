@@ -15,6 +15,9 @@ public class CommissionRealizationService
 
     public async Task<(int Count, decimal TotalAmount)> ConfirmPaymentAsync(string upiTransactionId, int inquiryId)
     {
+        if (string.IsNullOrWhiteSpace(upiTransactionId))
+            throw new ArgumentException("UPI transaction id is required to realize commissions.", nameof(upiTransactionId));
+
         var pendingCommissions = await _db.CommissionLedgers
             .Where(c => c.InquiryId == inquiryId && c.Status == CommissionStatus.Pending)
             .ToListAsync();

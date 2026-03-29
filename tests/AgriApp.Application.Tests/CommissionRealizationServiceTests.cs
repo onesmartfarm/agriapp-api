@@ -3,6 +3,7 @@ using AgriApp.Core.Entities;
 using AgriApp.Core.Enums;
 using AgriApp.Core.Interfaces;
 using AgriApp.Infrastructure.Data;
+using AgriApp.Infrastructure.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
@@ -23,8 +24,10 @@ namespace AgriApp.Application.Tests
     {
         private static AgriDbContext CreateDbContext(string dbName, ICurrentUser? currentUser = null)
         {
+            var interceptor = new AuditInterceptor(currentUser);
             var options = new DbContextOptionsBuilder<AgriDbContext>()
                 .UseInMemoryDatabase(dbName)
+                .AddInterceptors(interceptor)
                 .Options;
             return new AgriDbContext(options, currentUser);
         }

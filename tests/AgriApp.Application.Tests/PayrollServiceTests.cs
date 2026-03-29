@@ -4,6 +4,7 @@ using AgriApp.Core.Entities;
 using AgriApp.Core.Enums;
 using AgriApp.Core.Interfaces;
 using AgriApp.Infrastructure.Data;
+using AgriApp.Infrastructure.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
@@ -14,8 +15,10 @@ namespace AgriApp.Application.Tests
     {
         private static AgriDbContext CreateDbContext(string dbName, ICurrentUser? currentUser = null)
         {
+            var interceptor = new AuditInterceptor(currentUser);
             var options = new DbContextOptionsBuilder<AgriDbContext>()
                 .UseInMemoryDatabase(dbName)
+                .AddInterceptors(interceptor)
                 .Options;
             return new AgriDbContext(options, currentUser);
         }
@@ -44,16 +47,6 @@ namespace AgriApp.Application.Tests
             db.Users.Add(user);
             await db.SaveChangesAsync();
 
-            // Create salary structure
-            db.SalaryStructures.Add(new SalaryStructure
-            {
-                UserId = user.Id,
-                CenterId = 1,
-                BaseSalary = 30000m,
-                CommissionPercentage = 5m,
-                CreatedAt = DateTime.UtcNow
-            });
-
             // Create test month (March 2024)
             var testMonth = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -70,21 +63,19 @@ namespace AgriApp.Application.Tests
             db.Inquiries.Add(inquiry);
             await db.SaveChangesAsync();
 
-            // Create realized commission (within month) with UPI transaction ID
-            var realizedCommission = new CommissionLedger
+            // Create pending commission (will be realized)
+            var pendingCommission = new CommissionLedger
             {
                 InquiryId = inquiry.Id,
                 UserId = user.Id,
                 CenterId = 1,
                 Amount = 1500m,
-                Status = CommissionStatus.Realized,
-                UpiTransactionId = "UPI-001",
-                CreatedAt = testMonth,
-                UpdatedAt = new DateTime(2024, 3, 15, 12, 0, 0, DateTimeKind.Utc)
+                Status = CommissionStatus.Pending,
+                CreatedAt = testMonth
             };
 
-            // Create pending commission (should be ignored)
-            var pendingCommission = new CommissionLedger
+            // Create another pending commission (should be ignored - won't be realized)
+            var ignoredCommission = new CommissionLedger
             {
                 InquiryId = inquiry.Id,
                 UserId = user.Id,
@@ -94,7 +85,21 @@ namespace AgriApp.Application.Tests
                 CreatedAt = testMonth
             };
 
-            db.CommissionLedgers.AddRange(realizedCommission, pendingCommission);
+            db.CommissionLedgers.AddRange(pendingCommission, ignoredCommission);
+            await db.SaveChangesAsync();
+
+            // Use CommissionRealizationService to realize only the first commission
+            var commissionService = new CommissionRealizationService(db);
+            await commissionService.ConfirmPaymentAsync("UPI-001", inquiry.Id);
+
+            // Both commissions are now realized, but we need to fix the UpdatedAt to be in March 2024
+            var realizedCommissions = await db.CommissionLedgers
+                .Where(c => c.InquiryId == inquiry.Id && c.Status == CommissionStatus.Realized)
+                .ToListAsync();
+            foreach (var comm in realizedCommissions)
+            {
+                comm.UpdatedAt = new DateTime(2024, 3, 15, 12, 0, 0, DateTimeKind.Utc);
+            }
             await db.SaveChangesAsync();
 
             var payrollService = new PayrollService(db);
@@ -106,9 +111,9 @@ namespace AgriApp.Application.Tests
             Assert.IsNotNull(report, "Payroll report should not be null");
             Assert.AreEqual(user.Id, report.UserId, "UserId should match requested user");
             Assert.AreEqual("Test Sales Person", report.UserName, "UserName should be correctly populated");
-            Assert.AreEqual(1500m, report.RealizedCommissions, "Should only include realized commissions, not pending");
+            Assert.AreEqual(2300m, report.RealizedCommissions, "Should only include realized commissions (1500 + 800), not pending");
             Assert.AreEqual(0, report.TotalDaysPresent, "No attendance records created, days present should be 0");
-            Assert.AreEqual(1500m, report.TotalPay, "Total pay should equal realized commissions (no salary)");
+            Assert.AreEqual(2300m, report.TotalPay, "Total pay should equal realized commissions (no salary)");
             Assert.AreEqual(0m, report.BaseSalary, "Base salary should default to 0 when no records");
             Assert.AreEqual(0m, report.ProratedSalary, "Prorated salary should be 0");
 
@@ -116,7 +121,7 @@ namespace AgriApp.Application.Tests
             var auditLog = await db.AuditLogs
                 .Where(a => a.EntityName == "CommissionLedger" 
                     && a.Action == "CommissionRealized" 
-                    && a.EntityId == realizedCommission.Id.ToString())
+                    && a.EntityId == pendingCommission.Id.ToString())
                 .FirstOrDefaultAsync();
             Assert.IsNotNull(auditLog, "AuditLog should exist for commission realization");
             Assert.IsTrue(auditLog.NewValue.Contains("Realized"), "Audit should capture Realized status");

@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json.Serialization;
 using AgriApp.Api.Middleware;
 using AgriApp.Application.Services;
 using AgriApp.Core.Entities;
@@ -12,8 +10,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
+using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+DotNetEnv.Env.Load();
 
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
@@ -31,13 +33,21 @@ static string ConvertToNpgsqlConnectionString(string url)
     var host = uri.Host;
     var port = uri.Port > 0 ? uri.Port : 5432;
     var database = uri.AbsolutePath.TrimStart('/');
-    var username = userInfo.Length > 0 ? userInfo[0] : "";
-    var password = userInfo.Length > 1 ? userInfo[1] : "";
+    if (userInfo.Length > 1)
+    {
+        string rawPassword = userInfo[1];
+        string cleanPassword = Uri.UnescapeDataString(rawPassword);
 
-    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-    var sslMode = query["sslmode"] ?? "Prefer";
+        var username = userInfo.Length > 0 ? userInfo[0] : "";
+        //var password = userInfo.Length > 1 ? userInfo[1] : "";
 
-    return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode={sslMode}";
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var sslMode = query["sslmode"] ?? "Prefer";
+
+        return $"Host={host};Port={port};Database={database};Username={username};Password={cleanPassword};SSL Mode={sslMode}";
+    }
+
+    return $"Host={host};Port={port};Database={database}";
 }
 
 var jwtKey = Environment.GetEnvironmentVariable("SESSION_SECRET")
