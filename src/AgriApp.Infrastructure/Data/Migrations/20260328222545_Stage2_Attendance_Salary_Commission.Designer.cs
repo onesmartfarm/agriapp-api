@@ -3,6 +3,7 @@ using System;
 using AgriApp.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AgriApp.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AgriDbContext))]
-    partial class AgriDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260328222545_Stage2_Attendance_Salary_Commission")]
+    partial class Stage2_Attendance_Salary_Commission
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -359,12 +362,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("ActualEndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("ActualStartDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int>("CenterId")
                         .HasColumnType("integer");
 
@@ -377,31 +374,13 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("EquipmentId")
+                    b.Property<int>("EquipmentId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("InquiryId")
+                    b.Property<int>("StaffId")
                         .HasColumnType("integer");
-
-                    b.Property<int>("ResponsibleUserId")
-                        .HasColumnType("integer")
-                        .HasColumnName("StaffId");
-
-                    b.Property<DateTime>("ScheduledEndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ScheduledStartDate")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("TotalMaterialCost")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -410,16 +389,9 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EquipmentId")
-                        .HasDatabaseName("IX_WorkOrders_EquipmentId");
+                    b.HasIndex("EquipmentId");
 
-                    b.HasIndex("InquiryId");
-
-                    b.HasIndex("ResponsibleUserId")
-                        .HasDatabaseName("IX_WorkOrders_ResponsibleUserId");
-
-                    b.HasIndex("CenterId", "ScheduledStartDate", "ScheduledEndDate")
-                        .HasDatabaseName("IX_WorkOrders_CenterId_Schedule");
+                    b.HasIndex("StaffId");
 
                     b.ToTable("work_orders", (string)null);
                 });
@@ -542,24 +514,18 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.HasOne("AgriApp.Core.Entities.Equipment", "Equipment")
                         .WithMany("WorkOrders")
                         .HasForeignKey("EquipmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
-                    b.HasOne("AgriApp.Core.Entities.Inquiry", "Inquiry")
-                        .WithMany()
-                        .HasForeignKey("InquiryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("AgriApp.Core.Entities.User", "ResponsibleUser")
+                    b.HasOne("AgriApp.Core.Entities.User", "Staff")
                         .WithMany("AssignedWorkOrders")
-                        .HasForeignKey("ResponsibleUserId")
+                        .HasForeignKey("StaffId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Equipment");
 
-                    b.Navigation("Inquiry");
-
-                    b.Navigation("ResponsibleUser");
+                    b.Navigation("Staff");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Center", b =>
