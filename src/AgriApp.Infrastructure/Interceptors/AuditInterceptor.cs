@@ -9,7 +9,6 @@ namespace AgriApp.Infrastructure.Interceptors;
 public class AuditInterceptor : SaveChangesInterceptor
 {
     private readonly ICurrentUser? _currentUser;
-    private List<PendingAudit>? _pendingAudits;
 
     public AuditInterceptor(ICurrentUser? currentUser = null)
     {
@@ -20,7 +19,7 @@ public class AuditInterceptor : SaveChangesInterceptor
         DbContextEventData eventData,
         InterceptionResult<int> result)
     {
-        PreparePendingAudits(eventData.Context);
+        ProcessAudits(eventData.Context);
         return base.SavingChanges(eventData, result);
     }
 
@@ -29,138 +28,96 @@ public class AuditInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        PreparePendingAudits(eventData.Context);
+        ProcessAudits(eventData.Context);
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
-    public override int SavedChanges(
-        SaveChangesCompletedEventData eventData,
-        int result)
-    {
-        FinalizePendingAudits(eventData.Context);
-        return base.SavedChanges(eventData, result);
-    }
-
-    public override async ValueTask<int> SavedChangesAsync(
-        SaveChangesCompletedEventData eventData,
-        int result,
-        CancellationToken cancellationToken = default)
-    {
-        FinalizePendingAudits(eventData.Context);
-        return await base.SavedChangesAsync(eventData, result, cancellationToken);
-    }
-
-    private void PreparePendingAudits(DbContext? context)
+    private void ProcessAudits(DbContext? context)
     {
         if (context is null) return;
 
-        _pendingAudits = new List<PendingAudit>();
-        var userId = _currentUser?.UserId ?? 0;
+        var userId = _currentUser?.UserId ?? 0; // Or Guid.Empty if your UserIds are Guids
+        var auditsToAdd = new List<AuditLog>();
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        // .ToList() is CRITICAL here so we don't modify the collection while iterating
+        foreach (var entry in context.ChangeTracker.Entries().ToList())
         {
             if (entry.Entity is AuditLog) continue;
             if (entry.State == EntityState.Detached || entry.State == EntityState.Unchanged) continue;
 
-            if (entry.Entity is CommissionLedger && entry.State == EntityState.Modified)
+            var entityName = entry.Entity.GetType().Name;
+
+            // 1. Specific Rule: Commission Realized
+            if (entry.Entity is CommissionLedger ledger && entry.State == EntityState.Modified)
             {
                 var statusProp = entry.Property("Status");
                 if (statusProp.IsModified &&
                     statusProp.CurrentValue?.ToString() == "Realized" &&
                     statusProp.OriginalValue?.ToString() != "Realized")
                 {
-                    var ledger = (CommissionLedger)entry.Entity;
-                    _pendingAudits.Add(new PendingAudit
+                    auditsToAdd.Add(new AuditLog
                     {
-                        Entry = entry,
-                        AuditLog = new AuditLog
-                        {
-                            UserId = userId,
-                            Timestamp = DateTime.UtcNow,
-                            Action = "CommissionRealized",
-                            EntityName = "CommissionLedger",
-                            EntityId = GetPrimaryKeyValue(entry),
-                            OldValue = $"Status={statusProp.OriginalValue}",
-                            NewValue = $"Status=Realized;UpiTransactionId={ledger.UpiTransactionId}"
-                        }
+                        UserId = userId,
+                        Timestamp = DateTime.UtcNow,
+                        Action = "CommissionRealized",
+                        EntityName = "CommissionLedger",
+                        EntityId = GetPrimaryKeyValue(entry),
+                        OldValue = $"Status={statusProp.OriginalValue}",
+                        NewValue = $"Status=Realized;UpiTransactionId={ledger.UpiTransactionId}"
                     });
-                    continue;
+                    continue; // Skip the generic 'Modified' log for this specific event
                 }
             }
 
-            var entityName = entry.Entity.GetType().Name;
-
+            // 2. Generic Rules: Added, Modified, Deleted
             switch (entry.State)
             {
                 case EntityState.Added:
-                    _pendingAudits.Add(new PendingAudit
+                    auditsToAdd.Add(new AuditLog
                     {
-                        Entry = entry,
-                        AuditLog = new AuditLog
-                        {
-                            UserId = userId,
-                            Timestamp = DateTime.UtcNow,
-                            Action = "Created",
-                            EntityName = entityName,
-                            OldValue = null,
-                            NewValue = SerializeEntity(entry.CurrentValues)
-                        }
+                        UserId = userId,
+                        Timestamp = DateTime.UtcNow,
+                        Action = "Created",
+                        EntityName = entityName,
+                        EntityId = GetPrimaryKeyValue(entry), // Works if using Guids generated client-side
+                        OldValue = null,
+                        NewValue = SerializeEntity(entry.CurrentValues)
                     });
                     break;
 
                 case EntityState.Modified:
-                    _pendingAudits.Add(new PendingAudit
+                    auditsToAdd.Add(new AuditLog
                     {
-                        Entry = entry,
-                        AuditLog = new AuditLog
-                        {
-                            UserId = userId,
-                            Timestamp = DateTime.UtcNow,
-                            Action = "Updated",
-                            EntityName = entityName,
-                            EntityId = GetPrimaryKeyValue(entry),
-                            OldValue = SerializeEntity(entry.OriginalValues),
-                            NewValue = SerializeEntity(entry.CurrentValues)
-                        }
+                        UserId = userId,
+                        Timestamp = DateTime.UtcNow,
+                        Action = "Updated",
+                        EntityName = entityName,
+                        EntityId = GetPrimaryKeyValue(entry),
+                        OldValue = SerializeEntity(entry.OriginalValues),
+                        NewValue = SerializeEntity(entry.CurrentValues)
                     });
                     break;
 
                 case EntityState.Deleted:
-                    _pendingAudits.Add(new PendingAudit
+                    auditsToAdd.Add(new AuditLog
                     {
-                        Entry = entry,
-                        AuditLog = new AuditLog
-                        {
-                            UserId = userId,
-                            Timestamp = DateTime.UtcNow,
-                            Action = "Deleted",
-                            EntityName = entityName,
-                            EntityId = GetPrimaryKeyValue(entry),
-                            OldValue = SerializeEntity(entry.OriginalValues),
-                            NewValue = null
-                        }
+                        UserId = userId,
+                        Timestamp = DateTime.UtcNow,
+                        Action = "Deleted",
+                        EntityName = entityName,
+                        EntityId = GetPrimaryKeyValue(entry),
+                        OldValue = SerializeEntity(entry.OriginalValues),
+                        NewValue = null
                     });
                     break;
             }
         }
-    }
 
-    private void FinalizePendingAudits(DbContext? context)
-    {
-        if (context is null || _pendingAudits is null || _pendingAudits.Count == 0) return;
-
-        foreach (var pending in _pendingAudits)
+        // Add all gathered audits to the context so they save in the same transaction
+        if (auditsToAdd.Any())
         {
-            if (pending.AuditLog.Action == "Created")
-            {
-                pending.AuditLog.EntityId = GetPrimaryKeyValue(pending.Entry);
-                pending.AuditLog.NewValue = SerializeEntity(pending.Entry.CurrentValues);
-            }
-            context.Set<AuditLog>().Add(pending.AuditLog);
+            context.AddRange(auditsToAdd);
         }
-
-        _pendingAudits = null;
-        context.SaveChanges();
     }
 
     private static string? GetPrimaryKeyValue(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
@@ -177,16 +134,14 @@ public class AuditInterceptor : SaveChangesInterceptor
         var dict = new Dictionary<string, object?>();
         foreach (var prop in values.Properties)
         {
-            var value = values[prop];
             if (prop.Name.Contains("Password", StringComparison.OrdinalIgnoreCase)) continue;
-            dict[prop.Name] = value;
+            dict[prop.Name] = values[prop];
         }
-        return JsonSerializer.Serialize(dict);
-    }
-
-    private class PendingAudit
-    {
-        public Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry Entry { get; set; } = null!;
-        public AuditLog AuditLog { get; set; } = null!;
+        var options = new JsonSerializerOptions 
+        { 
+            WriteIndented = false,
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+        };
+        return JsonSerializer.Serialize(dict, options);
     }
 }
