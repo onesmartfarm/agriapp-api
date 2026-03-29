@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AgriApp.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2a0cd9a16d4baff601563b729465833652daaeb5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bdff030b31e4727d6f7fafc044b8eb6f22e15319")]
 [assembly: System.Reflection.AssemblyProductAttribute("AgriApp.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AgriApp.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
