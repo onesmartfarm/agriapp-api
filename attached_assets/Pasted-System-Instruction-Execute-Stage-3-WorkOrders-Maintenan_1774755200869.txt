@@ -1,0 +1,68 @@
+System Instruction: Execute Stage 3 (WorkOrders, Maintenance & Calendar)
+
+Context: This is a .NET 8 Clean Architecture project. You must strictly preserve all existing CenterId Global Query Filters, decimal(18,2) configurations, and the AuditInterceptor.
+
+Engineering Standards for this Stage:
+
+Thread-Safety: Do not use class-level state variables in any injected Services.
+
+Performance: All read-only queries (like Calendar fetching) MUST use .AsNoTracking() to reduce memory overhead.
+
+Correctness: We must strictly prevent double-booking of Equipment and Staff using exact date-overlap logic.
+
+1. Domain Updates (in /src/AgriApp.Core/Entities & Enums):
+
+Enum WorkOrderType: RentalBooking, PreventiveMaintenance, InternalProject.
+
+Enum WorkOrderStatus: Scheduled, InProgress, Completed, Cancelled.
+
+Entity WorkOrder: Id (Guid), CenterId (Guid, FK), InquiryId (Guid?, Nullable FK), EquipmentId (Guid?, Nullable FK), ResponsibleUserId (Guid, FK), ScheduledStartDate (DateTime), ScheduledEndDate (DateTime), ActualStartDate (DateTime?), ActualEndDate (DateTime?), TotalMaterialCost (decimal 18,2), Type (WorkOrderType), Status (WorkOrderStatus).
+
+2. Infrastructure & Performance (in /src/AgriApp.Infrastructure):
+
+Add DbSet<WorkOrder> to ApplicationDbContext.
+
+Security Filter: Apply builder.Entity<WorkOrder>().HasQueryFilter(e => e.CenterId == _currentUser.CenterId); (with SuperUser bypass).
+
+Performance Indexes: In OnModelCreating, explicitly add database indexes to speed up calendar queries:
+
+builder.Entity<WorkOrder>().HasIndex(w => new { w.CenterId, w.ScheduledStartDate, w.ScheduledEndDate });
+
+builder.Entity<WorkOrder>().HasIndex(w => w.EquipmentId);
+
+builder.Entity<WorkOrder>().HasIndex(w => w.ResponsibleUserId);
+
+3. Application Logic & Correctness (in /src/AgriApp.Application/Services):
+
+WorkOrderService: Create CreateWorkOrderAsync(WorkOrderDto request).
+
+The Double-Booking Firewall: Before saving, you MUST query the DB to check if the EquipmentId (if not null) OR the ResponsibleUserId is already booked.
+
+Use this exact overlap logic: existingOrder.ScheduledStartDate < request.ScheduledEndDate && existingOrder.ScheduledEndDate > request.ScheduledStartDate AND Status != Cancelled.
+
+If an overlap exists, throw an InvalidOperationException("Schedule conflict detected.").
+
+CalendarService: Create GetCenterCapacityAsync(DateTime start, DateTime end).
+
+Query WorkOrders between these dates.
+
+Mandatory: Chain .AsNoTracking() to this query for high performance.
+
+4. API Controllers (in /src/AgriApp.Api/Controllers):
+
+WorkOrderController: POST /api/workorders (Create) and PATCH /api/workorders/{id}/status (Update status).
+
+CalendarController: GET /api/calendar/capacity?start={date}&end={date}.
+
+5. AI Documentation Sync:
+
+Update .github/copilot-instructions.md: "Stage 3 Rule: All Calendar queries must use .AsNoTracking(). Double-booking checks must use exact start/end date overlap math."
+
+Decision Gate: Do not generate any database migrations yet. Write the C# code, then STOP and confirm completion.
+
+Why this prompt guarantees quality:
+The Database Indexes: When your calendar tries to load a month of data for your Shetale projects and tractor rentals, it won't scan the whole table. The composite index on CenterId and the dates makes the query instantaneous.
+
+.AsNoTracking(): This is a massive performance boost in EF Core. By telling the system it doesn't need to "watch" the calendar items for changes (since it's just displaying them to the user), you cut the memory usage of that API call in half.
+
+The Exact Overlap Math: AI often messes up date overlaps by using <= in the wrong places, which accidentally blocks back-to-back rentals (e.g., one ends at 12:00 PM, next starts at 12:00 PM). Providing the exact mathematical formula (StartA < EndB && EndA > StartB) ensures perfect correctness.

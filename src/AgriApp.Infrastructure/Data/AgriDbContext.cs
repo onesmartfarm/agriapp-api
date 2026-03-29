@@ -135,22 +135,40 @@ public class AgriDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Description).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().IsRequired();
+            entity.Property(e => e.Type).HasConversion<string>().IsRequired();
+            entity.Property(e => e.TotalMaterialCost).HasPrecision(18, 2);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            // Map ResponsibleUserId to existing 'StaffId' column for backward compatibility
+            entity.Property(e => e.ResponsibleUserId).HasColumnName("StaffId").IsRequired();
 
             entity.HasOne(e => e.Equipment)
                   .WithMany(eq => eq.WorkOrders)
                   .HasForeignKey(e => e.EquipmentId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(e => e.Staff)
+            entity.HasOne(e => e.ResponsibleUser)
                   .WithMany(u => u.AssignedWorkOrders)
-                  .HasForeignKey(e => e.StaffId)
+                  .HasForeignKey(e => e.ResponsibleUserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Inquiry)
+                  .WithMany()
+                  .HasForeignKey(e => e.InquiryId)
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasQueryFilter(e =>
                 _currentUser == null ||
                 _currentUser.Role == Role.SuperUser ||
                 e.CenterId == _currentUser.CenterId);
+
+            // Performance indexes for calendar queries
+            entity.HasIndex(w => new { w.CenterId, w.ScheduledStartDate, w.ScheduledEndDate })
+                  .HasDatabaseName("IX_WorkOrders_CenterId_Schedule");
+            entity.HasIndex(w => w.EquipmentId)
+                  .HasDatabaseName("IX_WorkOrders_EquipmentId");
+            entity.HasIndex(w => w.ResponsibleUserId)
+                  .HasDatabaseName("IX_WorkOrders_ResponsibleUserId");
         });
     }
 
