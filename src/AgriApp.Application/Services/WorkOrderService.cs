@@ -1,38 +1,137 @@
+using AgriApp.Application.DTOs;
 using AgriApp.Core.Entities;
 using AgriApp.Core.Enums;
-using AgriApp.Infrastructure.Repositories;
+using AgriApp.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace AgriApp.Application.Services;
 
 public class WorkOrderService
 {
-    private readonly WorkOrderRepository _repo;
+    private readonly AgriDbContext _db;
 
-    public WorkOrderService(WorkOrderRepository repo)
+    public WorkOrderService(AgriDbContext db)
     {
-        _repo = repo;
+        _db = db;
     }
 
-    public async Task<List<WorkOrder>> GetAllAsync()
-        => await _repo.GetAllAsync();
+    public async Task<List<WorkOrderResponse>> GetAllAsync()
+        => await _db.WorkOrders
+            .AsNoTracking()
+            .Select(w => MapToResponse(w))
+            .ToListAsync();
 
-    public async Task<WorkOrder?> GetByIdAsync(int id)
-        => await _repo.GetByIdAsync(id);
-
-    public async Task<WorkOrder> CreateAsync(int equipmentId, int staffId, string description, int centerId)
+    public async Task<WorkOrderResponse?> GetByIdAsync(int id)
     {
+        var w = await _db.WorkOrders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        return w == null ? null : MapToResponse(w);
+    }
+
+    public async Task<WorkOrderResponse> CreateWorkOrderAsync(CreateWorkOrderRequest request, int centerId)
+    {
+        if (!Enum.TryParse<WorkOrderType>(request.Type, out var type))
+            throw new ArgumentException($"Invalid WorkOrderType: {request.Type}");
+
+        if (request.ScheduledEndDate <= request.ScheduledStartDate)
+            throw new ArgumentException("ScheduledEndDate must be after ScheduledStartDate.");
+
+        await EnforceDoubleBookingFirewall(
+            request.EquipmentId,
+            request.ResponsibleUserId,
+            request.ScheduledStartDate,
+            request.ScheduledEndDate,
+            excludeId: null);
+
         var workOrder = new WorkOrder
         {
-            EquipmentId = equipmentId,
-            StaffId = staffId,
-            Description = description,
             CenterId = centerId,
-            Status = WorkStatus.Pending,
+            InquiryId = request.InquiryId,
+            EquipmentId = request.EquipmentId,
+            ResponsibleUserId = request.ResponsibleUserId,
+            Description = request.Description,
+            Type = type,
+            Status = WorkStatus.Scheduled,
+            ScheduledStartDate = request.ScheduledStartDate,
+            ScheduledEndDate = request.ScheduledEndDate,
+            TotalMaterialCost = request.TotalMaterialCost,
             CreatedAt = DateTime.UtcNow
         };
-        return await _repo.CreateAsync(workOrder);
+
+        _db.WorkOrders.Add(workOrder);
+        await _db.SaveChangesAsync();
+
+        return MapToResponse(workOrder);
     }
 
-    public async Task<WorkOrder?> UpdateStatusAsync(int id, WorkStatus status)
-        => await _repo.UpdateStatusAsync(id, status);
+    public async Task<WorkOrderResponse?> UpdateStatusAsync(int id, WorkStatus status)
+    {
+        var workOrder = await _db.WorkOrders.FindAsync(id);
+        if (workOrder == null) return null;
+
+        if (status == WorkStatus.InProgress && workOrder.ActualStartDate == null)
+            workOrder.ActualStartDate = DateTime.UtcNow;
+
+        if (status == WorkStatus.Completed && workOrder.ActualEndDate == null)
+            workOrder.ActualEndDate = DateTime.UtcNow;
+
+        workOrder.Status = status;
+        workOrder.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return MapToResponse(workOrder);
+    }
+
+    private async Task EnforceDoubleBookingFirewall(
+        int? equipmentId,
+        int responsibleUserId,
+        DateTime start,
+        DateTime end,
+        int? excludeId)
+    {
+        var query = _db.WorkOrders
+            .AsNoTracking()
+            .Where(w =>
+                w.Status != WorkStatus.Cancelled &&
+                w.ScheduledStartDate < end &&
+                w.ScheduledEndDate > start);
+
+        if (excludeId.HasValue)
+            query = query.Where(w => w.Id != excludeId.Value);
+
+        bool conflict;
+
+        if (equipmentId.HasValue)
+        {
+            conflict = await query.AnyAsync(w =>
+                w.EquipmentId == equipmentId ||
+                w.ResponsibleUserId == responsibleUserId);
+        }
+        else
+        {
+            conflict = await query.AnyAsync(w =>
+                w.ResponsibleUserId == responsibleUserId);
+        }
+
+        if (conflict)
+            throw new InvalidOperationException("Schedule conflict detected.");
+    }
+
+    private static WorkOrderResponse MapToResponse(WorkOrder w) => new()
+    {
+        Id = w.Id,
+        CenterId = w.CenterId,
+        InquiryId = w.InquiryId,
+        EquipmentId = w.EquipmentId,
+        ResponsibleUserId = w.ResponsibleUserId,
+        Description = w.Description,
+        Type = w.Type.ToString(),
+        Status = w.Status.ToString(),
+        ScheduledStartDate = w.ScheduledStartDate,
+        ScheduledEndDate = w.ScheduledEndDate,
+        ActualStartDate = w.ActualStartDate,
+        ActualEndDate = w.ActualEndDate,
+        TotalMaterialCost = w.TotalMaterialCost,
+        CreatedAt = w.CreatedAt,
+        UpdatedAt = w.UpdatedAt
+    };
 }

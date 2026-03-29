@@ -35,6 +35,15 @@ Stage 2 — Attendance, GPS & Payroll:
   - Global Query Filters apply to Attendance, SalaryStructure, and CommissionLedger (CenterId isolation, SuperUser bypass).
   - SalaryStructure has a unique constraint on UserId (one salary structure per user).
 
+Stage 3 — WorkOrders, Maintenance & Calendar:
+  - All Calendar queries MUST use .AsNoTracking() for high performance (read-only, no EF change tracking).
+  - Double-booking checks MUST use exact date overlap math: existingOrder.ScheduledStartDate < request.ScheduledEndDate && existingOrder.ScheduledEndDate > request.ScheduledStartDate. This allows back-to-back bookings (end at 12:00, next starts at 12:00 is allowed).
+  - Cancelled work orders are excluded from double-booking checks.
+  - WorkOrder.ResponsibleUserId maps to the legacy 'StaffId' column via HasColumnName("StaffId").
+  - WorkOrder.EquipmentId is nullable — equipment is optional (e.g., InternalProject may have no equipment).
+  - Composite index on (CenterId, ScheduledStartDate, ScheduledEndDate) is required for calendar performance.
+  - Services must be stateless (no class-level mutable state) — thread-safe for concurrent requests.
+
 General Rules:
   - No UI code allowed. This is a backend-only API.
   - All DTOs must use DataAnnotations for input validation.

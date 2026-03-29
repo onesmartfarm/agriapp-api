@@ -6,14 +6,30 @@ namespace AgriApp.Core.Entities;
 public class WorkOrder : ICenterScoped, IAuditable
 {
     public int Id { get; set; }
-    public int EquipmentId { get; set; }
-    public int StaffId { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public WorkStatus Status { get; set; } = WorkStatus.Pending;
     public int CenterId { get; set; }
+    public int? InquiryId { get; set; }
+    public int? EquipmentId { get; set; }
+
+    /// <summary>
+    /// Maps to the existing 'StaffId' column in the database.
+    /// </summary>
+    public int ResponsibleUserId { get; set; }
+
+    public string Description { get; set; } = string.Empty;
+    public WorkOrderType Type { get; set; } = WorkOrderType.RentalBooking;
+    public WorkStatus Status { get; set; } = WorkStatus.Scheduled;
+
+    public DateTime ScheduledStartDate { get; set; }
+    public DateTime ScheduledEndDate { get; set; }
+    public DateTime? ActualStartDate { get; set; }
+    public DateTime? ActualEndDate { get; set; }
+
+    public decimal TotalMaterialCost { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
-    public Equipment Equipment { get; set; } = null!;
-    public User Staff { get; set; } = null!;
+    public Equipment? Equipment { get; set; }
+    public User ResponsibleUser { get; set; } = null!;
+    public Inquiry? Inquiry { get; set; }
 }
