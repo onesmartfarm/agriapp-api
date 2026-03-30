@@ -1,49 +1,96 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# ============================================================
+# .NET / C# build output — NEVER commit these
+# ============================================================
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
 
-# compiled output
-dist
-tmp
-out-tsc
+# NuGet packages
+*.nupkg
+*.snupkg
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+
+# .NET tooling
+.vs/
+*.user
+*.suo
+*.userprefs
+*.userosscache
+*.sln.docstates
+
+# .NET publish output
+**/publish/
+**/PublishScripts/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage*/
+
+# .NET runtime config (generated)
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# ============================================================
+# Environment / secrets
+# ============================================================
+.env
+.env.local
+.env.*.local
+*.pfx
+*.p12
+appsettings.Local.json
+
+# ============================================================
+# TypeScript / Node.js
+# ============================================================
+dist/
+tmp/
+out-tsc/
 *.tsbuildinfo
-.expo
-.expo-shared
+.expo/
+.expo-shared/
+node_modules/
+npm-debug.log
+yarn-error.log
 
-# dependencies
-node_modules
-
+# ============================================================
 # IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
+# ============================================================
+.idea/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
 
-# misc
-/.sass-cache
-/connect.lock
-/coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
-
-# System Files
+# ============================================================
+# OS files
+# ============================================================
 .DS_Store
 Thumbs.db
 
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
-
-# Replit
+# ============================================================
+# Replit internal
+# ============================================================
 .cache/
 .local/
+.cursor/
+.github/instructions/
