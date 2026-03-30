@@ -97,6 +97,11 @@ src/
 
 - **AgriApp .NET API**: `cd src/AgriApp.Api && dotnet run` on port 5000
 
+## Git Branching Policy
+
+- **`dev`** — all ongoing development; every stage is pushed here
+- **`main`** — stable releases only; do NOT push to main during active development
+
 ## Database
 
 PostgreSQL via `DATABASE_URL` environment variable. EF Core migrations applied automatically on startup. JWT secret from `SESSION_SECRET` env var.
