@@ -16,7 +16,7 @@
                 <MudSpacer />
                 <MudText Typo="Typo.body2" Class="mr-4">@context.User.Identity?.Name</MudText>
                 <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                               OnClick="HandleLogout" Title="Sign out" />
+                               OnClick="HandleLogout" aria-label="Sign out" />
             </MudAppBar>
 
             <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always"

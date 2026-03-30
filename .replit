@@ -51,8 +51,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd src/AgriApp.Web && DOTNET_ROOT=/nix/store/1blv644vinali34masnw6g5fjjjaa4y6-dotnet-sdk-8.0.416/share/dotnet dotnet run --urls http://0.0.0.0:6000"
-waitForPort = 6000
+args = "cd src/AgriApp.Web && DOTNET_ROOT=/nix/store/1blv644vinali34masnw6g5fjjjaa4y6-dotnet-sdk-8.0.416/share/dotnet dotnet run --no-hot-reload --urls http://0.0.0.0:8080"
+waitForPort = 8080
 
 [agent]
 stack = "PNPM_WORKSPACE"
