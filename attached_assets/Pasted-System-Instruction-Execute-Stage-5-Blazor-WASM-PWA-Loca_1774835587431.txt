@@ -1,0 +1,60 @@
+System Instruction: Execute Stage 5 (Blazor WASM PWA & Localization Foundation)
+
+Context: We are building a unified, role-based Web Portal (AgriApp.Web) for our existing Clean Architecture API. The frontend must be responsive (mobile-first) using MudBlazor, configured as a Progressive Web App (PWA) for offline caching on slow mobile networks, and structured to support Marathi (mr-IN) localization.
+
+CRITICAL: Shared Models & API Contract
+
+You MUST add a project reference to AgriApp.Core.
+
+Do NOT create duplicate DTOs in the frontend. Strictly use the existing DTOs, Enums, and Entities from AgriApp.Core.
+
+Step 1: Workspace Cleanup & Project Setup
+
+Run git pull origin main to ensure the workspace is synced.
+
+Create the frontend project using the PWA flag: dotnet new blazorwasm -o src/AgriApp.Web --pwa
+
+Add the project to the solution: dotnet sln add src/AgriApp.Web/AgriApp.Web.csproj
+
+Install required NuGet packages: MudBlazor, Blazored.LocalStorage, Microsoft.AspNetCore.Components.WebAssembly.Authentication, Microsoft.Extensions.Localization.
+
+Step 2: Authentication Infrastructure (/src/AgriApp.Web/Security)
+
+Create JwtAuthenticationStateProvider.cs (inherits AuthenticationStateProvider). It must read the JWT from local storage, decode the claims (Role, CenterId), and manage the auth state securely.
+
+Create JwtAuthorizationMessageHandler.cs (inherits DelegatingHandler) to attach the Bearer token to all outgoing HttpClient requests.
+
+Step 3: Service Layer Generation (/src/AgriApp.Web/Services)
+Generate typed HTTP clients that use the configured HttpClient and the JwtAuthorizationMessageHandler:
+
+IAuthService: Handles /api/auth/login. On success, stores token in Blazored.LocalStorage and notifies the AuthStateProvider.
+
+IWorkOrderService: Wraps CRUD operations for /api/workorders.
+
+IAttendanceService: Wraps /api/attendance/clockin and clockout.
+
+Step 4: Localization & UI Shell (/src/AgriApp.Web/Shared)
+
+Configure standard .NET Localization in Program.cs to support both en-US and mr-IN (Marathi).
+
+Setup MainLayout.razor using MudBlazor (MudLayout, MudAppBar, MudDrawer).
+
+Implement NavMenu.razor using strictly bound <AuthorizeView> roles:
+
+"Clock In/Out" (Roles: Staff, Sales, Supervisor).
+
+"CRM / Inquiries" (Roles: Sales, Manager, SuperUser).
+
+"Capacity Calendar" (Roles: Supervisor, Manager, SuperUser).
+
+"Financials & Audit" (Roles: Manager, SuperUser).
+
+Step 5: Wiring it up (Program.cs)
+
+Register MudServices, BlazoredLocalStorage, and the Localization services.
+
+Register the typed HTTP clients and the JwtAuthenticationStateProvider.
+
+Ensure the PWA service worker service-worker-assets.js is correctly linked in wwwroot/index.html.
+
+Decision Gate: Do NOT attempt to build the complex CRUD UI pages yet. Build the core PWA infrastructure, the Auth State Provider, the HTTP Interceptors, and the Main Layout. Reply with "Secure PWA Frontend Foundation Built" when complete.
