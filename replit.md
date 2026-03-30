@@ -93,9 +93,38 @@ src/
 - `GET /swagger` — Swagger UI documentation
 - `GET /api/healthz` — Health check
 
+## Stage 5 — Blazor WASM Frontend (AgriApp.Web)
+
+**Project**: `src/AgriApp.Web/` — Blazor WebAssembly Standalone, .NET 8, MudBlazor 8
+**References**: `AgriApp.Core` (enums: Role, WorkOrderType, WorkStatus, InvoiceStatus)
+
+### Infrastructure
+- `Auth/JwtAuthenticationStateProvider.cs` — Reads JWT from LocalStorage, decodes claims, validates expiry, notifies Blazor auth state
+- `Auth/JwtAuthorizationMessageHandler.cs` — DelegatingHandler: attaches `Authorization: Bearer <token>` to all secured HTTP requests
+- Two named HttpClients: `PublicApi` (login, no token) and `SecuredApi` (token via handler)
+
+### HTTP Services
+- `IAuthService/AuthService` — `POST /api/auth/login`, stores token, calls `NotifyUserLoginAsync`
+- `IWorkOrderService/WorkOrderService` — full CRUD for `/api/work-orders`
+- `IAttendanceService/AttendanceService` — clock-in/out via `/api/attendance/clock`
+
+### UI (MudBlazor)
+- `Layout/MainLayout.razor` — MudLayout + MudAppBar (green #2E7D32 brand) + responsive drawer + logout
+- `Layout/NavMenu.razor` — strictly role-gated `<AuthorizeView>` (Staff/Sales/Supervisor/Manager/SuperUser)
+- `Layout/LoginLayout.razor` — full-screen green gradient wrapper for login page
+- `Pages/Login.razor` — `EditForm` + `DataAnnotationsValidator` + ISnackbar error handling for 400/401/403
+- `Pages/Dashboard.razor` — role-gated summary cards
+- `Shared/RedirectToLogin.razor` — unauthenticated redirect with returnUrl
+
+### Security & Validation
+- `CascadingAuthenticationState` in `App.razor`; `AuthorizeRouteView` for all protected routes
+- All forms use `<EditForm>` + `<DataAnnotationsValidator />` (no raw HTML injection)
+- API errors (400/401/403/500) caught per-operation and displayed via `ISnackbar`
+
 ## Workflow
 
 - **AgriApp .NET API**: `cd src/AgriApp.Api && dotnet run` on port 5000
+- **AgriApp Blazor WASM**: `cd src/AgriApp.Web && dotnet run --urls http://0.0.0.0:6000` on port 6000
 
 ## Database
 

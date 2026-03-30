@@ -26,6 +26,10 @@ author = "agent"
 task = "workflow.run"
 args = "AgriApp .NET API"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "AgriApp Blazor WASM"
+
 [[workflows.workflow]]
 name = "AgriApp .NET API"
 author = "agent"
@@ -37,6 +41,18 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "AgriApp Blazor WASM"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src/AgriApp.Web && DOTNET_ROOT=/nix/store/1blv644vinali34masnw6g5fjjjaa4y6-dotnet-sdk-8.0.416/share/dotnet dotnet run --urls http://0.0.0.0:6000"
+waitForPort = 6000
 
 [agent]
 stack = "PNPM_WORKSPACE"

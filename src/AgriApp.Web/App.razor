@@ -1,0 +1,32 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(AgriApp.Web.Layout.MainLayout)">
+                <NotAuthorized>
+                    @if (!context.User.Identity!.IsAuthenticated)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Error" Class="m-4">
+                            You do not have permission to view this page.
+                        </MudAlert>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="m-4" />
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not Found — AgriApp</PageTitle>
+            <LayoutView Layout="@typeof(AgriApp.Web.Layout.MainLayout)">
+                <MudAlert Severity="Severity.Warning" Class="m-4">
+                    Page not found. <MudLink Href="/">Return to dashboard</MudLink>
+                </MudAlert>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
