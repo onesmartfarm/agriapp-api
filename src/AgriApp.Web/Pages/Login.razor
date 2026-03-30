@@ -1,0 +1,98 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+@inject IStringLocalizer<AgriApp.Web.Resources.SharedResource> L
+
+<PageTitle>@L["Login"] — AgriApp</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudCard Elevation="4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Align="Align.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Agriculture" Color="Color.Primary" Class="mr-2" />
+                    AgriApp
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        <MudCardContent>
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            <MudTextField @bind-Value="_email"
+                          Label="@L["Email"]"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Email"
+                          Class="mb-4"
+                          Disabled="_loading" />
+
+            <MudTextField @bind-Value="_password"
+                          Label="@L["Password"]"
+                          Variant="Variant.Outlined"
+                          InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_showPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                          OnAdornmentClick="() => _showPassword = !_showPassword"
+                          Class="mb-2"
+                          Disabled="_loading" />
+        </MudCardContent>
+
+        <MudCardActions Class="px-4 pb-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="_loading"
+                       OnClick="HandleLoginAsync">
+                @if (_loading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>@L["Loading"]</span>
+                }
+                else
+                {
+                    <span>@L["Login"]</span>
+                }
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string _email = "";
+    private string _password = "";
+    private string _errorMessage = "";
+    private bool _loading;
+    private bool _showPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+            Nav.NavigateTo(ReturnUrl ?? "/", replace: true);
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        _errorMessage = "";
+        _loading = true;
+
+        var (success, error) = await AuthService.LoginAsync(_email, _password);
+        if (success)
+            Nav.NavigateTo(ReturnUrl ?? "/", replace: true);
+        else
+            _errorMessage = error ?? L["LoginFailed"];
+
+        _loading = false;
+    }
+}
