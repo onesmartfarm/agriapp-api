@@ -1,0 +1,53 @@
+System Instruction: Execute Stage 4 (Invoicing & Payments)
+
+Context: This is our .NET 8 Clean Architecture project. You must strictly preserve all existing CenterId Global Query Filters, AuditInterceptor logic, and decimal(18,2) precision rules.
+
+Engineering Standards:
+
+Financial Precision: All monetary fields MUST use .HasPrecision(18, 2).
+
+Thread-Safety: No class-level state in Services.
+
+Security: All new entities must implement the CenterId Global Query Filter.
+
+1. Domain Updates (in /src/AgriApp.Core/Entities & Enums):
+
+Enum InvoiceStatus: Draft, Issued, PartiallyPaid, Paid, Overdue.
+
+Enum PaymentMethod: UPI, BankTransfer, Cash.
+
+Entity Invoice: Id (Guid), CenterId (Guid, FK), WorkOrderId (Guid, FK), CustomerId (Guid), TotalAmount (decimal), AmountPaid (decimal), DueDate (DateTime), Status (InvoiceStatus).
+
+Entity Payment: Id (Guid), CenterId (Guid, FK), InvoiceId (Guid, FK), Amount (decimal), PaymentDate (DateTime), PaymentMethod (PaymentMethod), TransactionReference (string - e.g., UPI ID).
+
+2. Infrastructure & Performance (in /src/AgriApp.Infrastructure):
+
+Add DbSet<Invoice> and DbSet<Payment> to ApplicationDbContext.
+
+Security Filter: Apply HasQueryFilter(e => e.CenterId == _currentUser.CenterId) to both entities.
+
+Performance Indexes: In OnModelCreating, add database indexes:
+
+builder.Entity<Invoice>().HasIndex(i => new { i.CenterId, i.Status });
+
+builder.Entity<Payment>().HasIndex(p => p.TransactionReference).IsUnique(); (To prevent duplicate UPI payments).
+
+3. Application Logic (in /src/AgriApp.Application/Services):
+
+InvoiceService: Create GenerateInvoiceFromWorkOrderAsync(Guid workOrderId).
+
+Rule: Fetch the WorkOrder. If Status is NOT Completed, throw an InvalidOperationException.
+
+Rule: Calculate TotalAmount based on WorkOrder.TotalMaterialCost plus any flat fees. Create the Invoice as Draft.
+
+PaymentService: Create RecordPaymentAsync(Guid invoiceId, decimal amount, PaymentMethod method, string transactionRef).
+
+Rule: Add the Payment. Update Invoice.AmountPaid.
+
+Rule: If Invoice.AmountPaid >= Invoice.TotalAmount, change Invoice.Status to Paid.
+
+4. API Controllers (in /src/AgriApp.Api/Controllers):
+
+InvoiceController: Endpoints for generating an invoice and viewing a center's invoices.
+
+PaymentController: Endpoint for recording a payment.

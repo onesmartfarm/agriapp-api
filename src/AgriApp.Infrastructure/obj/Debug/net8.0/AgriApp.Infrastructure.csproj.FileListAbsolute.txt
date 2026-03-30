@@ -15,3 +15,4 @@
 /home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.pdb
 /home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.genruntimeconfig.cache
 /home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/ref/AgriApp.Infrastructure.dll
+/home/runner/workspace/src/AgriApp.Infrastructure/obj/Debug/net8.0/AgriApp.Infrastructure.sourcelink.json

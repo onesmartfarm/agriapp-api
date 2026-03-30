@@ -24,6 +24,8 @@ public class AgriDbContext : DbContext
     public DbSet<Attendance> Attendances => Set<Attendance>();
     public DbSet<SalaryStructure> SalaryStructures => Set<SalaryStructure>();
     public DbSet<CommissionLedger> CommissionLedgers => Set<CommissionLedger>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +40,8 @@ public class AgriDbContext : DbContext
         ConfigureAttendance(modelBuilder);
         ConfigureSalaryStructure(modelBuilder);
         ConfigureCommissionLedger(modelBuilder);
+        ConfigureInvoice(modelBuilder);
+        ConfigurePayment(modelBuilder);
     }
 
     private void ConfigureCenter(ModelBuilder modelBuilder)
@@ -267,6 +271,78 @@ public class AgriDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.CenterId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e =>
+                _currentUser == null ||
+                _currentUser.Role == Role.SuperUser ||
+                e.CenterId == _currentUser.CenterId);
+        });
+    }
+
+    private void ConfigureInvoice(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Invoice>(entity =>
+        {
+            entity.ToTable("invoices");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.BaseAmount).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.GstAmount).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.AmountPaid).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.WorkOrder)
+                  .WithMany()
+                  .HasForeignKey(e => e.WorkOrderId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Customer)
+                  .WithMany()
+                  .HasForeignKey(e => e.CustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // Performance index: list invoices by center + status in one seek
+            entity.HasIndex(i => new { i.CenterId, i.Status })
+                  .HasDatabaseName("IX_Invoices_CenterId_Status");
+
+            // One invoice per work order
+            entity.HasIndex(i => i.WorkOrderId)
+                  .IsUnique()
+                  .HasDatabaseName("IX_Invoices_WorkOrderId_Unique");
+
+            entity.HasQueryFilter(e =>
+                _currentUser == null ||
+                _currentUser.Role == Role.SuperUser ||
+                e.CenterId == _currentUser.CenterId);
+        });
+    }
+
+    private void ConfigurePayment(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.ToTable("payments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Amount).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.PaymentMethod).HasConversion<string>().IsRequired();
+            entity.Property(e => e.TransactionReference).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.Invoice)
+                  .WithMany(i => i.Payments)
+                  .HasForeignKey(e => e.InvoiceId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // Unique constraint prevents duplicate UPI/bank transaction IDs
+            entity.HasIndex(p => p.TransactionReference)
+                  .IsUnique()
+                  .HasDatabaseName("IX_Payments_TransactionReference_Unique");
+
+            entity.HasIndex(p => p.InvoiceId)
+                  .HasDatabaseName("IX_Payments_InvoiceId");
 
             entity.HasQueryFilter(e =>
                 _currentUser == null ||

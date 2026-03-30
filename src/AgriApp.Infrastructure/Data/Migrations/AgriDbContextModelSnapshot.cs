@@ -264,6 +264,112 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.ToTable("inquiries", (string)null);
                 });
 
+            modelBuilder.Entity("AgriApp.Core.Entities.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("BaseAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("GstAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("WorkOrderId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("WorkOrderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Invoices_WorkOrderId_Unique");
+
+                    b.HasIndex("CenterId", "Status")
+                        .HasDatabaseName("IX_Invoices_CenterId_Status");
+
+                    b.ToTable("invoices", (string)null);
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransactionReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("IX_Payments_InvoiceId");
+
+                    b.HasIndex("TransactionReference")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Payments_TransactionReference_Unique");
+
+                    b.ToTable("payments", (string)null);
+                });
+
             modelBuilder.Entity("AgriApp.Core.Entities.SalaryStructure", b =>
                 {
                     b.Property<int>("Id")
@@ -508,6 +614,36 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("Salesperson");
                 });
 
+            modelBuilder.Entity("AgriApp.Core.Entities.Invoice", b =>
+                {
+                    b.HasOne("AgriApp.Core.Entities.User", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AgriApp.Core.Entities.WorkOrder", "WorkOrder")
+                        .WithMany()
+                        .HasForeignKey("WorkOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("WorkOrder");
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.Payment", b =>
+                {
+                    b.HasOne("AgriApp.Core.Entities.Invoice", "Invoice")
+                        .WithMany("Payments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+                });
+
             modelBuilder.Entity("AgriApp.Core.Entities.SalaryStructure", b =>
                 {
                     b.HasOne("AgriApp.Core.Entities.Center", "Center")
@@ -574,6 +710,11 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("Inquiries");
 
                     b.Navigation("WorkOrders");
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.Invoice", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.User", b =>

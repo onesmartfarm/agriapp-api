@@ -359,3 +359,4 @@
 /home/runner/workspace/tests/AgriApp.Application.Tests/obj/Debug/net8.0/AgriApp.Application.Tests.pdb
 /home/runner/workspace/tests/AgriApp.Application.Tests/obj/Debug/net8.0/AgriApp.Application.Tests.genruntimeconfig.cache
 /home/runner/workspace/tests/AgriApp.Application.Tests/obj/Debug/net8.0/ref/AgriApp.Application.Tests.dll
+/home/runner/workspace/tests/AgriApp.Application.Tests/obj/Debug/net8.0/AgriApp.Application.Tests.sourcelink.json

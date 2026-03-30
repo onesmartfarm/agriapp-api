@@ -9,3 +9,4 @@
 /home/runner/workspace/src/AgriApp.Core/obj/Debug/net8.0/refint/AgriApp.Core.dll
 /home/runner/workspace/src/AgriApp.Core/obj/Debug/net8.0/AgriApp.Core.pdb
 /home/runner/workspace/src/AgriApp.Core/obj/Debug/net8.0/ref/AgriApp.Core.dll
+/home/runner/workspace/src/AgriApp.Core/obj/Debug/net8.0/AgriApp.Core.sourcelink.json

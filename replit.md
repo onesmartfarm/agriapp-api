@@ -20,8 +20,8 @@ C# 12 / .NET 8 Clean Architecture backend API for managing agricultural equipmen
 AgriApp.sln
 src/
 ├── AgriApp.Core/              # Domain layer (zero dependencies)
-│   ├── Entities/              # Center, User, Equipment, Inquiry, WorkOrder, AuditLog, Attendance, SalaryStructure, CommissionLedger
-│   ├── Enums/                 # Role, WorkStatus, EquipmentCategory, InquiryStatus, AttendanceType, CommissionStatus
+│   ├── Entities/              # Center, User, Equipment, Inquiry, WorkOrder, AuditLog, Attendance, SalaryStructure, CommissionLedger, Invoice, Payment
+│   ├── Enums/                 # Role, WorkStatus, EquipmentCategory, InquiryStatus, AttendanceType, CommissionStatus, InvoiceStatus, PaymentMethod
 │   └── Interfaces/            # ICurrentUser, ICenterScoped, IAuditable
 ├── AgriApp.Infrastructure/    # Data access layer
 │   ├── Data/
@@ -32,9 +32,9 @@ src/
 │   └── Repositories/          # UserRepository, EquipmentRepository, InquiryRepository, WorkOrderRepository
 ├── AgriApp.Application/       # Business logic layer
 │   ├── DTOs/                  # Request/Response DTOs with DataAnnotations
-│   └── Services/              # EquipmentService, InquiryService, WorkOrderService, GstCalculator, CommissionCalculator, CommissionRealizationService, PayrollService
+│   └── Services/              # EquipmentService, InquiryService, WorkOrderService, GstCalculator, CommissionCalculator, CommissionRealizationService, PayrollService, InvoiceService, PaymentService
 └── AgriApp.Api/               # Presentation layer
-    ├── Controllers/           # Auth, Equipment, Inquiries, WorkOrders, Users, Health, Attendance, Payroll, Payment, SalaryStructure
+    ├── Controllers/           # Auth, Equipment, Inquiries, WorkOrders, Users, Health, Attendance, Payroll, Payment, SalaryStructure, Invoices, Payments
     ├── Middleware/             # CurrentUser (ICurrentUser implementation from JWT claims)
     ├── Program.cs             # DI registration, JWT config, EF Core setup, seed data
     └── appsettings.json       # Configuration
@@ -85,6 +85,11 @@ src/
 - `GET /api/salary-structures/{userId}` — Get salary by user
 - `GET /api/payroll/report` — Payroll report (Manager/SuperUser)
 - `POST /api/payment/webhook` — Realize commissions via UPI payment
+- `POST /api/invoices/generate` — Generate Draft invoice from Completed WorkOrder (Manager/SuperUser)
+- `GET /api/invoices` — List invoices (center-filtered)
+- `GET /api/invoices/{id}` — Get invoice by ID
+- `PATCH /api/invoices/{id}/issue` — Transition Draft → Issued (Manager/SuperUser)
+- `POST /api/payments` — Record payment against Issued/PartiallyPaid invoice (Manager/SuperUser)
 - `GET /swagger` — Swagger UI documentation
 - `GET /api/healthz` — Health check
 

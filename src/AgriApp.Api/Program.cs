@@ -80,6 +80,8 @@ builder.Services.AddScoped<WorkOrderService>();
 builder.Services.AddScoped<CommissionRealizationService>();
 builder.Services.AddScoped<PayrollService>();
 builder.Services.AddScoped<CalendarService>();
+builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<PaymentService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
