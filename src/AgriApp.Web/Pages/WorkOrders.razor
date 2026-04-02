@@ -1,0 +1,155 @@
+@page "/workorders"
+@using Microsoft.AspNetCore.Components.Authorization
+@using AgriApp.Core.Enums
+@using AgriApp.Web.Services
+@inject IWorkOrderService WorkOrderService
+@inject IDialogService DialogService
+
+<AuthorizeView Roles="Supervisor,Manager,SuperUser">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">Work Orders</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+                        Create New
+                    </MudButton>
+                </MudStack>
+
+                @if (_loading)
+                {
+                    <MudProgressCircular IsIndeterminate="true" />
+                }
+                else if (_workOrders == null || _workOrders.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No work orders found.</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="_workOrders" Striped="true" Bordered="true" Dense="true">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Id" Title="ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.EquipmentName" Title="Equipment" Sortable="true" />
+                            <PropertyColumn Property="x => x.Description" Title="Description" />
+                            <PropertyColumn Property="x => x.ScheduledStartDate" Title="Start Date" Format="yyyy-MM-dd HH:mm" Sortable="true" />
+                            <PropertyColumn Property="x => x.ScheduledEndDate" Title="End Date" Format="yyyy-MM-dd HH:mm" Sortable="true" />
+                            <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
+                                <CellTemplate Context="statusCtx">
+                                    <span style="padding: 4px 8px; border-radius: 4px; color: white; background-color: @GetStatusColorHex(statusCtx.Item.Status); font-size: 0.85em;">
+                                        @statusCtx.Item.Status
+                                    </span>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.TotalMaterialCost" Title="Cost" Format="C" Sortable="true" />
+                            <TemplateColumn Title="Actions">
+                                <CellTemplate Context="actionCtx">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditDialog(actionCtx.Item.Id)" />
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteWorkOrder(actionCtx.Item.Id)" />
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudStack>
+        </MudContainer>
+    </Authorized>
+
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to access this page.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<WorkOrderListItem>? _workOrders;
+    private bool _loading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkOrders();
+    }
+
+    private async Task LoadWorkOrders()
+    {
+        _loading = true;
+        try
+        {
+            _workOrders = await WorkOrderService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading work orders: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<WorkOrderDialog>
+        {
+            { x => x.IsCreate, true }
+        };
+
+        var dialog = await DialogService.ShowAsync<WorkOrderDialog>("Create Work Order", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWorkOrders();
+        }
+    }
+
+    private async Task OpenEditDialog(int id)
+    {
+        var parameters = new DialogParameters<WorkOrderDialog>
+        {
+            { x => x.IsCreate, false },
+            { x => x.WorkOrderId, id }
+        };
+
+        var dialog = await DialogService.ShowAsync<WorkOrderDialog>("Edit Work Order", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWorkOrders();
+        }
+    }
+
+    private async Task DeleteWorkOrder(int id)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            "Are you sure you want to delete this work order?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            // TODO: Implement delete via WorkOrderService
+            await LoadWorkOrders();
+        }
+    }
+
+    private Color GetStatusColor(WorkStatus status) => status switch
+    {
+        WorkStatus.Scheduled => Color.Info,
+        WorkStatus.InProgress => Color.Warning,
+        WorkStatus.Completed => Color.Success,
+        WorkStatus.Cancelled => Color.Error,
+        WorkStatus.Pending => Color.Default,
+        _ => Color.Default
+    };
+
+    private string GetStatusColorHex(WorkStatus status) => status switch
+    {
+        WorkStatus.Scheduled => "#2196f3",
+        WorkStatus.InProgress => "#ff9800",
+        WorkStatus.Completed => "#4caf50",
+        WorkStatus.Cancelled => "#f44336",
+        WorkStatus.Pending => "#9e9e9e",
+        _ => "#9e9e9e"
+    };
+}

@@ -19,6 +19,12 @@
                 </MudNavLink>
             </AuthorizeView>
 
+            <AuthorizeView Roles="Supervisor,Manager,SuperUser" Context="woCtx">
+                <MudNavLink Href="/workorders" Icon="@Icons.Material.Filled.Assignment">
+                    Work Orders
+                </MudNavLink>
+            </AuthorizeView>
+
             <AuthorizeView Roles="Supervisor,Manager,SuperUser" Context="calCtx">
                 <MudNavLink Href="/calendar" Icon="@Icons.Material.Filled.CalendarMonth">
                     Capacity Calendar

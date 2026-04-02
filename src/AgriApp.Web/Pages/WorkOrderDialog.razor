@@ -1,0 +1,117 @@
+@using AgriApp.Core.Enums
+@using AgriApp.Web.Services
+
+@inject IWorkOrderService WorkOrderService
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_description" Label="Description" FullWidth="true" />
+
+            <MudSelect @bind-Value="_type" Label="Type" FullWidth="true">
+                @foreach (var type in Enum.GetValues(typeof(WorkOrderType)).Cast<WorkOrderType>())
+                {
+                    <MudSelectItem Value="@type">@type</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect @bind-Value="_status" Label="Status" FullWidth="true">
+                @foreach (var status in Enum.GetValues(typeof(WorkStatus)).Cast<WorkStatus>())
+                {
+                    <MudSelectItem Value="@status">@status</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudDatePicker @bind-Date="_scheduledStartDate" Label="Scheduled Start Date" FullWidth="true" />
+            <MudTimePicker @bind-Time="_scheduledStartTime" Label="Start Time" FullWidth="true" />
+
+            <MudDatePicker @bind-Date="_scheduledEndDate" Label="Scheduled End Date" FullWidth="true" />
+            <MudTimePicker @bind-Time="_scheduledEndTime" Label="End Time" FullWidth="true" />
+
+            <MudNumericField @bind-Value="_equipmentId" Label="Equipment ID" FullWidth="true" />
+            <MudNumericField @bind-Value="_responsibleUserId" Label="Responsible User ID" FullWidth="true" />
+            <MudNumericField @bind-Value="_totalMaterialCost" Label="Total Material Cost" FullWidth="true" Format="C2" />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Save" Variant="Variant.Filled">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    public dynamic? MudDialog { get; set; }
+
+    [Parameter]
+    public bool IsCreate { get; set; } = true;
+
+    [Parameter]
+    public int WorkOrderId { get; set; }
+
+    private string _description = string.Empty;
+    private WorkOrderType _type = WorkOrderType.RentalBooking;
+    private WorkStatus _status = WorkStatus.Scheduled;
+    private DateTime? _scheduledStartDate;
+    private TimeSpan? _scheduledStartTime;
+    private DateTime? _scheduledEndDate;
+    private TimeSpan? _scheduledEndTime;
+    private int? _equipmentId;
+    private int? _responsibleUserId;
+    private decimal? _totalMaterialCost = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsCreate && WorkOrderId > 0)
+        {
+            var workOrder = await WorkOrderService.GetByIdAsync(WorkOrderId);
+            if (workOrder != null)
+            {
+                _description = workOrder.Description;
+                _scheduledStartDate = workOrder.ScheduledStartDate.Date;
+                _scheduledStartTime = workOrder.ScheduledStartDate.TimeOfDay;
+                _scheduledEndDate = workOrder.ScheduledEndDate.Date;
+                _scheduledEndTime = workOrder.ScheduledEndDate.TimeOfDay;
+                _totalMaterialCost = workOrder.TotalMaterialCost;
+            }
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            // Combine dates and times
+            var startDateTime = _scheduledStartDate.HasValue && _scheduledStartTime.HasValue
+                ? _scheduledStartDate.Value.Add(_scheduledStartTime.Value)
+                : DateTime.Now;
+
+            var endDateTime = _scheduledEndDate.HasValue && _scheduledEndTime.HasValue
+                ? _scheduledEndDate.Value.Add(_scheduledEndTime.Value)
+                : DateTime.Now.AddDays(1);
+
+            // TODO: Implement actual save via WorkOrderService
+            // For now, just close the dialog
+            if (MudDialog != null)
+            {
+                MudDialog.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving work order: {ex.Message}");
+        }
+    }
+
+    private void Cancel()
+    {
+        try
+        {
+            if (MudDialog != null)
+                MudDialog.Cancel();
+        }
+        catch { }
+    }
+}
