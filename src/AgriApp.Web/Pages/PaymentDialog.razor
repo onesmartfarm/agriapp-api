@@ -1,0 +1,110 @@
+@using AgriApp.Core.Enums
+@using AgriApp.Web.Services
+@inject IPaymentService PaymentService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm id="payForm" Model="_form" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                <MudAlert Severity="Severity.Info">
+                    Balance Due: <b>₹ @BalanceDue.ToString("N2")</b>
+                </MudAlert>
+
+                <MudNumericField @bind-Value="_form.Amount" Label="Payment Amount (₹)"
+                                 Format="N2" FullWidth="true" For="@(() => _form.Amount)" />
+
+                <MudSelect @bind-Value="_form.PaymentMethod" Label="Payment Method" FullWidth="true">
+                    @foreach (var method in Enum.GetValues(typeof(PaymentMethod)).Cast<PaymentMethod>())
+                    {
+                        <MudSelectItem Value="@method.ToString()">@method</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudTextField @bind-Value="_form.TransactionReference"
+                              Label="Transaction Reference"
+                              HelperText="UPI Transaction ID, cheque no., bank ref., etc."
+                              FullWidth="true"
+                              For="@(() => _form.TransactionReference)" />
+
+                <ValidationSummary />
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+
+                @if (_result != null)
+                {
+                    <MudAlert Severity="Severity.Success">
+                        Payment recorded. Invoice status: <b>@_result.InvoiceStatus</b>.
+                        Balance remaining: ₹ @_result.InvoiceBalanceDue.ToString("N2")
+                    </MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">@(_result != null ? "Close" : "Cancel")</MudButton>
+        @if (_result == null)
+        {
+            <MudButton form="payForm" ButtonType="ButtonType.Submit"
+                       Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
+                @(_saving ? "Recording…" : "Record Payment")
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public dynamic? MudDialog { get; set; }
+
+    [Parameter]
+    public Guid InvoiceId { get; set; }
+
+    [Parameter]
+    public decimal BalanceDue { get; set; }
+
+    private PaymentRecordRequest _form = new();
+    private bool _saving = false;
+    private string? _error;
+    private PaymentResultResponse? _result;
+
+    protected override void OnParametersSet()
+    {
+        _form.InvoiceId = InvoiceId;
+        _form.Amount = BalanceDue;
+    }
+
+    private async Task Save()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var (success, error, payment) = await PaymentService.RecordPaymentAsync(_form);
+            if (success)
+            {
+                _result = payment;
+                Snackbar.Add("Payment recorded successfully.", Severity.Success);
+                if (MudDialog != null) MudDialog.Close();
+            }
+            else
+            {
+                _error = error;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void CloseDialog()
+    {
+        try { if (MudDialog != null) MudDialog.Close(); } catch { }
+    }
+}

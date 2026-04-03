@@ -53,6 +53,18 @@ builder.Services.AddScoped<IAttendanceService>(sp =>
     return new AttendanceService(factory.CreateClient("AgriApi"));
 });
 
+builder.Services.AddScoped<IEquipmentService>(sp =>
+    new EquipmentService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+
+builder.Services.AddScoped<IInquiryService>(sp =>
+    new InquiryService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+
+builder.Services.AddScoped<IInvoiceService>(sp =>
+    new InvoiceService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+
+builder.Services.AddScoped<IPaymentService>(sp =>
+    new PaymentService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+
 // ── Localization default culture ─────────────────────────────────────────────
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");

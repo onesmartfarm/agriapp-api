@@ -1,0 +1,144 @@
+@using AgriApp.Web.Services
+@inject IInquiryService InquiryService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (IsCreate)
+        {
+            <EditForm id="inqCreateForm" Model="_createForm" OnValidSubmit="SaveCreate">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    <MudNumericField @bind-Value="_createForm.CustomerId" Label="Customer ID"
+                                     FullWidth="true" For="@(() => _createForm.CustomerId)" />
+                    <MudNumericField @bind-Value="_createForm.EquipmentId" Label="Equipment ID"
+                                     FullWidth="true" For="@(() => _createForm.EquipmentId)" />
+                    <MudNumericField @bind-Value="_createForm.SalespersonId" Label="Salesperson ID"
+                                     FullWidth="true" For="@(() => _createForm.SalespersonId)" />
+                    <MudNumericField @bind-Value="_createForm.CenterId" Label="Center ID (optional)"
+                                     FullWidth="true" />
+                    <ValidationSummary />
+                    @if (!string.IsNullOrEmpty(_error))
+                    {
+                        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                    }
+                </MudStack>
+            </EditForm>
+        }
+        else
+        {
+            <EditForm id="inqStatusForm" Model="_statusForm" OnValidSubmit="SaveStatus">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body1">
+                        Inquiry #@InquiryId — current status: <b>@CurrentStatus</b>
+                    </MudText>
+                    <MudSelect @bind-Value="_statusForm.Status" Label="New Status" FullWidth="true">
+                        @foreach (var s in new[] { "New", "InProgress", "Converted", "Closed" })
+                        {
+                            <MudSelectItem Value="@s">@s</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <ValidationSummary />
+                    @if (!string.IsNullOrEmpty(_error))
+                    {
+                        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                    }
+                </MudStack>
+            </EditForm>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        @if (IsCreate)
+        {
+            <MudButton form="inqCreateForm" ButtonType="ButtonType.Submit"
+                       Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
+                @(_saving ? "Saving…" : "Create")
+            </MudButton>
+        }
+        else
+        {
+            <MudButton form="inqStatusForm" ButtonType="ButtonType.Submit"
+                       Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
+                @(_saving ? "Saving…" : "Update Status")
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public dynamic? MudDialog { get; set; }
+
+    [Parameter]
+    public bool IsCreate { get; set; } = true;
+
+    [Parameter]
+    public int InquiryId { get; set; }
+
+    [Parameter]
+    public string CurrentStatus { get; set; } = "New";
+
+    private CreateInquiryRequest _createForm = new();
+    private UpdateInquiryStatusRequest _statusForm = new();
+    private bool _saving = false;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        _statusForm.Status = CurrentStatus;
+    }
+
+    private async Task SaveCreate()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var (success, error, _) = await InquiryService.CreateAsync(_createForm);
+            if (success)
+            {
+                Snackbar.Add("Inquiry created.", Severity.Success);
+                if (MudDialog != null) MudDialog.Close();
+            }
+            else
+            {
+                _error = error;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveStatus()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var (success, error, _) = await InquiryService.UpdateStatusAsync(InquiryId, _statusForm.Status);
+            if (success)
+            {
+                Snackbar.Add("Status updated.", Severity.Success);
+                if (MudDialog != null) MudDialog.Close();
+            }
+            else
+            {
+                _error = error;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
+    }
+}

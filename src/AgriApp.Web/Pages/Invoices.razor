@@ -1,0 +1,161 @@
+@page "/invoices"
+@using Microsoft.AspNetCore.Components.Authorization
+@using AgriApp.Web.Services
+@inject IInvoiceService InvoiceService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<AuthorizeView Roles="SuperUser,Manager">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">Invoices</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="OpenGenerateDialog"
+                               StartIcon="@Icons.Material.Filled.ReceiptLong">
+                        Generate Invoice
+                    </MudButton>
+                </MudStack>
+
+                @if (_loading)
+                {
+                    <MudProgressCircular IsIndeterminate="true" />
+                }
+                else if (_invoices == null || _invoices.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No invoices found.</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="_invoices" Striped="true" Bordered="true" Dense="true" Filterable="true">
+                        <Columns>
+                            <TemplateColumn Title="Invoice ID">
+                                <CellTemplate Context="idCtx">
+                                    <MudText Typo="Typo.caption">@idCtx.Item.Id.ToString()[..8]…</MudText>
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <PropertyColumn Property="x => x.WorkOrderId" Title="Work Order" Sortable="true" />
+                            <PropertyColumn Property="x => x.CustomerId" Title="Customer" Sortable="true" />
+                            <PropertyColumn Property="x => x.BaseAmount" Title="Base (₹)" Format="N2" Sortable="true" />
+                            <PropertyColumn Property="x => x.GstAmount" Title="GST (₹)" Format="N2" Sortable="true" />
+                            <PropertyColumn Property="x => x.TotalAmount" Title="Total (₹)" Format="N2" Sortable="true" />
+                            <PropertyColumn Property="x => x.AmountPaid" Title="Paid (₹)" Format="N2" Sortable="true" />
+                            <PropertyColumn Property="x => x.BalanceDue" Title="Balance (₹)" Format="N2" Sortable="true">
+                                <CellTemplate Context="balCtx">
+                                    <MudText Color="@(balCtx.Item.BalanceDue > 0 ? Color.Error : Color.Success)">
+                                        ₹ @balCtx.Item.BalanceDue.ToString("N2")
+                                    </MudText>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.DueDate" Title="Due Date" Format="yyyy-MM-dd" Sortable="true" />
+                            <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
+                                <CellTemplate Context="stCtx">
+                                    <span style="padding: 3px 8px; border-radius: 4px; background-color: @GetStatusColorHex(stCtx.Item.Status); color: white; font-size: 0.82em;">
+                                        @stCtx.Item.Status
+                                    </span>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <TemplateColumn Title="Actions">
+                                <CellTemplate Context="actCtx">
+                                    @if (actCtx.Item.Status == "Draft")
+                                    {
+                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Send"
+                                                       Color="Color.Info" title="Issue Invoice"
+                                                       OnClick="() => IssueInvoice(actCtx.Item.Id)" />
+                                    }
+                                    @if (actCtx.Item.Status is "Issued" or "PartiallyPaid")
+                                    {
+                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Payment"
+                                                       Color="Color.Success" title="Record Payment"
+                                                       OnClick="() => OpenPaymentDialog(actCtx.Item)" />
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudStack>
+        </MudContainer>
+    </Authorized>
+
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to access this page.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<InvoiceResponse>? _invoices;
+    private bool _loading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvoices();
+    }
+
+    private async Task LoadInvoices()
+    {
+        _loading = true;
+        try
+        {
+            _invoices = await InvoiceService.GetAllAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenGenerateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<InvoiceGenerateDialog>("Generate Invoice from Work Order");
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadInvoices();
+    }
+
+    private async Task IssueInvoice(Guid id)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Issue Invoice",
+            "Transition this invoice from Draft to Issued? It will then be payable.",
+            yesText: "Issue", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            var (success, error, _) = await InvoiceService.IssueAsync(id);
+            if (success)
+            {
+                Snackbar.Add("Invoice issued successfully.", Severity.Success);
+                await LoadInvoices();
+            }
+            else
+            {
+                Snackbar.Add($"Error: {error}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenPaymentDialog(InvoiceResponse invoice)
+    {
+        var parameters = new DialogParameters<PaymentDialog>
+        {
+            { x => x.InvoiceId, invoice.Id },
+            { x => x.BalanceDue, invoice.BalanceDue }
+        };
+        var dialog = await DialogService.ShowAsync<PaymentDialog>("Record Payment", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadInvoices();
+    }
+
+    private string GetStatusColorHex(string status) => status switch
+    {
+        "Draft"         => "#9e9e9e",
+        "Issued"        => "#2196f3",
+        "PartiallyPaid" => "#ff9800",
+        "Paid"          => "#4caf50",
+        "Overdue"       => "#f44336",
+        _               => "#9e9e9e"
+    };
+}

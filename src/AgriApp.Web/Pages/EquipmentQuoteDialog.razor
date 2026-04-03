@@ -1,0 +1,80 @@
+@using AgriApp.Web.Services
+@inject IEquipmentService EquipmentService
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudNumericField @bind-Value="_hours" Label="Rental Duration (hours)" Min="0.5m"
+                             Format="N1" FullWidth="true" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                       OnClick="CalculateQuote" Disabled="_loading">
+                @(_loading ? "Calculating…" : "Calculate Quote")
+            </MudButton>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            }
+
+            @if (_quote != null)
+            {
+                <MudDivider />
+                <MudText Typo="Typo.subtitle1"><b>Quote for @Equipment.Name</b></MudText>
+                <MudSimpleTable Dense="true" Striped="true">
+                    <tbody>
+                        <tr><td>Hours</td><td>@_quote.Hours.ToString("N1")</td></tr>
+                        <tr><td>Base Amount</td><td>₹ @_quote.Pricing.BaseAmount.ToString("N2")</td></tr>
+                        <tr><td>CGST (9%)</td><td>₹ @_quote.Pricing.Cgst.ToString("N2")</td></tr>
+                        <tr><td>SGST (9%)</td><td>₹ @_quote.Pricing.Sgst.ToString("N2")</td></tr>
+                        <tr><td><b>Total (incl. GST)</b></td><td><b>₹ @_quote.Pricing.GrandTotal.ToString("N2")</b></td></tr>
+                        <tr><td>Commission Rate</td><td>@((_quote.Commission.CommissionRate * 100).ToString("N0"))%</td></tr>
+                        <tr><td>Commission Amount</td><td>₹ @_quote.Commission.CommissionAmount.ToString("N2")</td></tr>
+                        <tr><td>Net to Company</td><td>₹ @_quote.Commission.NetToCompany.ToString("N2")</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public dynamic? MudDialog { get; set; }
+
+    [Parameter]
+    public EquipmentResponse Equipment { get; set; } = null!;
+
+    private decimal _hours = 1m;
+    private bool _loading = false;
+    private string? _error;
+    private EquipmentQuoteResult? _quote;
+
+    private async Task CalculateQuote()
+    {
+        _loading = true;
+        _error = null;
+        _quote = null;
+        try
+        {
+            var (success, error, quote) = await EquipmentService.GetQuoteAsync(Equipment.Id, _hours);
+            if (success)
+                _quote = quote;
+            else
+                _error = error;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Close()
+    {
+        try { if (MudDialog != null) MudDialog.Close(); } catch { }
+    }
+}

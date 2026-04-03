@@ -31,6 +31,18 @@
                 </MudNavLink>
             </AuthorizeView>
 
+            <AuthorizeView Roles="SuperUser,Manager" Context="eqCtx">
+                <MudNavLink Href="/equipment" Icon="@Icons.Material.Filled.Agriculture">
+                    Equipment
+                </MudNavLink>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="SuperUser,Manager" Context="invCtx">
+                <MudNavLink Href="/invoices" Icon="@Icons.Material.Filled.Receipt">
+                    Invoices
+                </MudNavLink>
+            </AuthorizeView>
+
             <AuthorizeView Roles="Manager,SuperUser" Context="finCtx">
                 <MudNavLink Href="/financials" Icon="@Icons.Material.Filled.AccountBalance">
                     Financials &amp; Audit

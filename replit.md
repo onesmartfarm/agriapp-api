@@ -93,9 +93,27 @@ src/
 - `GET /swagger` — Swagger UI documentation
 - `GET /api/healthz` — Health check
 
+## Blazor WASM Frontend (AgriApp.Web)
+
+`src/AgriApp.Web` — Blazor WASM PWA on port 6000 (MudBlazor, Blazored.LocalStorage, custom JWT auth).
+
+**Pages**: Login, Home, Attendance (Clock In/Out), WorkOrders, Calendar, Equipment, Inquiries, Invoices.
+
+**Services** (all use named HttpClient "AgriApi" → http://localhost:5000):
+- `IAuthService` / `AuthService` — JWT login + state management
+- `IWorkOrderService` / `WorkOrderService` — CRUD
+- `IAttendanceService` / `AttendanceService` — clock in/out + history
+- `IEquipmentService` / `EquipmentService` — CRUD + rental quote (GST + commission)
+- `IInquiryService` / `InquiryService` — CRUD + status update
+- `IInvoiceService` / `InvoiceService` — list/get/generate/issue
+- `IPaymentService` / `PaymentService` — record payment
+
+**Nav roles**: Staff/Sales → Clock In/Out; Sales/Manager/SuperUser → Inquiries; Supervisor+ → WorkOrders & Calendar; Manager/SuperUser → Equipment & Invoices.
+
 ## Workflow
 
 - **AgriApp .NET API**: `cd src/AgriApp.Api && dotnet run` on port 5000
+- **AgriApp Blazor WASM**: `cd src/AgriApp.Web && dotnet run --launch-profile http` on port 6000
 
 ## Git Branching Policy
 

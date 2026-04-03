@@ -1,0 +1,129 @@
+@using AgriApp.Core.Enums
+@using AgriApp.Web.Services
+@inject IEquipmentService EquipmentService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm id="eqForm" Model="_form" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_form.Name" Label="Name" FullWidth="true"
+                              For="@(() => _form.Name)" />
+
+                <MudSelect @bind-Value="_form.Category" Label="Category" FullWidth="true">
+                    @foreach (var cat in Enum.GetValues(typeof(EquipmentCategory)).Cast<EquipmentCategory>())
+                    {
+                        <MudSelectItem Value="@cat.ToString()">@cat</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudNumericField @bind-Value="_form.HourlyRate" Label="Hourly Rate (₹)"
+                                 Format="N2" FullWidth="true"
+                                 For="@(() => _form.HourlyRate)" />
+
+                @if (IsCreate)
+                {
+                    <MudNumericField @bind-Value="_form.CenterId" Label="Center ID"
+                                     FullWidth="true"
+                                     For="@(() => _form.CenterId)" />
+                }
+
+                <ValidationSummary />
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton form="eqForm" ButtonType="ButtonType.Submit" Color="Color.Primary"
+                   Variant="Variant.Filled" Disabled="_saving">
+            @(_saving ? "Saving…" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public dynamic? MudDialog { get; set; }
+
+    [Parameter]
+    public bool IsCreate { get; set; } = true;
+
+    [Parameter]
+    public int EquipmentId { get; set; }
+
+    private CreateEquipmentRequest _form = new();
+    private bool _saving = false;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsCreate && EquipmentId > 0)
+        {
+            var eq = await EquipmentService.GetByIdAsync(EquipmentId);
+            if (eq != null)
+            {
+                _form.Name = eq.Name;
+                _form.Category = eq.Category;
+                _form.HourlyRate = eq.HourlyRate;
+                _form.CenterId = eq.CenterId;
+            }
+        }
+    }
+
+    private async Task Save()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            if (IsCreate)
+            {
+                var (success, error, _) = await EquipmentService.CreateAsync(_form);
+                if (success)
+                {
+                    Snackbar.Add("Equipment created.", Severity.Success);
+                    if (MudDialog != null) MudDialog.Close();
+                }
+                else
+                {
+                    _error = error;
+                }
+            }
+            else
+            {
+                var update = new UpdateEquipmentRequest
+                {
+                    Name = _form.Name,
+                    Category = _form.Category,
+                    HourlyRate = _form.HourlyRate
+                };
+                var (success, error, _) = await EquipmentService.UpdateAsync(EquipmentId, update);
+                if (success)
+                {
+                    Snackbar.Add("Equipment updated.", Severity.Success);
+                    if (MudDialog != null) MudDialog.Close();
+                }
+                else
+                {
+                    _error = error;
+                }
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
+    }
+}

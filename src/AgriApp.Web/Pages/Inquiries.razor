@@ -1,0 +1,119 @@
+@page "/inquiries"
+@using Microsoft.AspNetCore.Components.Authorization
+@using AgriApp.Web.Services
+@inject IInquiryService InquiryService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<AuthorizeView Roles="SuperUser,Manager,Sales">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">CRM / Inquiries</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="OpenCreateDialog"
+                               StartIcon="@Icons.Material.Filled.Add">
+                        New Inquiry
+                    </MudButton>
+                </MudStack>
+
+                @if (_loading)
+                {
+                    <MudProgressCircular IsIndeterminate="true" />
+                }
+                else if (_inquiries == null || _inquiries.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No inquiries found.</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="_inquiries" Striped="true" Bordered="true" Dense="true" Filterable="true">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Id" Title="ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.CustomerId" Title="Customer ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.EquipmentId" Title="Equipment ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.SalespersonId" Title="Salesperson ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.CenterId" Title="Center ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
+                                <CellTemplate Context="statusCtx">
+                                    <span style="padding: 3px 8px; border-radius: 4px; background-color: @GetStatusColorHex(statusCtx.Item.Status); color: white; font-size: 0.82em;">
+                                        @statusCtx.Item.Status
+                                    </span>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd" Sortable="true" />
+                            <TemplateColumn Title="Actions">
+                                <CellTemplate Context="actCtx">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.SwapHoriz"
+                                                   title="Update Status"
+                                                   Color="Color.Warning"
+                                                   OnClick="() => OpenStatusDialog(actCtx.Item)" />
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudStack>
+        </MudContainer>
+    </Authorized>
+
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to access this page.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<InquiryResponse>? _inquiries;
+    private bool _loading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInquiries();
+    }
+
+    private async Task LoadInquiries()
+    {
+        _loading = true;
+        try
+        {
+            _inquiries = await InquiryService.GetAllAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<InquiryDialog>("New Inquiry",
+            new DialogParameters<InquiryDialog> { { x => x.IsCreate, true } });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadInquiries();
+    }
+
+    private async Task OpenStatusDialog(InquiryResponse inquiry)
+    {
+        var parameters = new DialogParameters<InquiryDialog>
+        {
+            { x => x.IsCreate, false },
+            { x => x.InquiryId, inquiry.Id },
+            { x => x.CurrentStatus, inquiry.Status }
+        };
+        var dialog = await DialogService.ShowAsync<InquiryDialog>("Update Inquiry Status", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadInquiries();
+    }
+
+    private string GetStatusColorHex(string status) => status switch
+    {
+        "New"        => "#2196f3",
+        "InProgress" => "#ff9800",
+        "Converted"  => "#4caf50",
+        "Closed"     => "#9e9e9e",
+        _            => "#9e9e9e"
+    };
+}

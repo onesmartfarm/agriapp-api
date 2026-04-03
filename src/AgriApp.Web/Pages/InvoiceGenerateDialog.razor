@@ -1,0 +1,75 @@
+@using AgriApp.Web.Services
+@inject IInvoiceService InvoiceService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm id="genInvForm" Model="_form" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                <MudNumericField @bind-Value="_form.WorkOrderId" Label="Work Order ID"
+                                 FullWidth="true" For="@(() => _form.WorkOrderId)" />
+                <MudNumericField @bind-Value="_form.CustomerId" Label="Customer ID"
+                                 FullWidth="true" For="@(() => _form.CustomerId)" />
+                <MudNumericField @bind-Value="_form.CenterId" Label="Center ID (SuperUser only — leave 0 to auto-detect)"
+                                 FullWidth="true" />
+                <MudDatePicker @bind-Date="_dueDate" Label="Due Date" />
+                <MudNumericField @bind-Value="_form.AdditionalFees" Label="Additional Fees (₹)"
+                                 Format="N2" FullWidth="true" For="@(() => _form.AdditionalFees)" />
+                <ValidationSummary />
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton form="genInvForm" ButtonType="ButtonType.Submit"
+                   Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
+            @(_saving ? "Generating…" : "Generate")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public dynamic? MudDialog { get; set; }
+
+    private GenerateInvoiceRequest _form = new();
+    private DateTime? _dueDate = DateTime.Today.AddDays(30);
+    private bool _saving = false;
+    private string? _error;
+
+    private async Task Save()
+    {
+        _saving = true;
+        _error = null;
+        _form.DueDate = _dueDate ?? DateTime.Today.AddDays(30);
+        _form.CenterId = _form.CenterId == 0 ? null : _form.CenterId;
+        try
+        {
+            var (success, error, _) = await InvoiceService.GenerateAsync(_form);
+            if (success)
+            {
+                Snackbar.Add("Invoice generated.", Severity.Success);
+                if (MudDialog != null) MudDialog.Close();
+            }
+            else
+            {
+                _error = error;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
+    }
+}
