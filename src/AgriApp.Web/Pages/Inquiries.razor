@@ -31,10 +31,10 @@
                     <MudDataGrid Items="_inquiries" Striped="true" Bordered="true" Dense="true" Filterable="true">
                         <Columns>
                             <PropertyColumn Property="x => x.Id" Title="ID" Sortable="true" />
-                            <PropertyColumn Property="x => x.CustomerId" Title="Customer ID" Sortable="true" />
-                            <PropertyColumn Property="x => x.EquipmentId" Title="Equipment ID" Sortable="true" />
-                            <PropertyColumn Property="x => x.SalespersonId" Title="Salesperson ID" Sortable="true" />
-                            <PropertyColumn Property="x => x.CenterId" Title="Center ID" Sortable="true" />
+                            <PropertyColumn Property="x => x.CustomerName" Title="Customer" Sortable="true" />
+                            <PropertyColumn Property="x => x.EquipmentName" Title="Equipment" Sortable="true" />
+                            <PropertyColumn Property="x => x.SalespersonName" Title="Salesperson" Sortable="true" />
+                            <PropertyColumn Property="x => x.CenterName" Title="Center" Sortable="true" />
                             <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
                                 <CellTemplate Context="statusCtx">
                                     <span style="padding: 3px 8px; border-radius: 4px; background-color: @GetStatusColorHex(statusCtx.Item.Status); color: white; font-size: 0.82em;">

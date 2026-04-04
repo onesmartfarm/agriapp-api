@@ -16,14 +16,23 @@ public class WorkOrderService
     }
 
     public async Task<List<WorkOrderResponse>> GetAllAsync()
-        => await _db.WorkOrders
+    {
+        var rows = await _db.WorkOrders
             .AsNoTracking()
-            .Select(w => MapToResponse(w))
+            .Include(w => w.Center)
+            .Include(w => w.Equipment)
+            .OrderByDescending(w => w.Id)
             .ToListAsync();
+        return rows.Select(MapToResponse).ToList();
+    }
 
     public async Task<WorkOrderResponse?> GetByIdAsync(int id)
     {
-        var w = await _db.WorkOrders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        var w = await _db.WorkOrders
+            .AsNoTracking()
+            .Include(x => x.Center)
+            .Include(x => x.Equipment)
+            .FirstOrDefaultAsync(x => x.Id == id);
         return w == null ? null : MapToResponse(w);
     }
 
@@ -87,7 +96,8 @@ public class WorkOrderService
             await _db.SaveChangesAsync();
         }
 
-        return MapToResponse(workOrder);
+        return await GetByIdAsync(workOrder.Id)
+            ?? throw new InvalidOperationException("Failed to load work order after create.");
     }
 
     public async Task<WorkOrderResponse?> UpdateWorkOrderAsync(int id, UpdateWorkOrderRequest request)
@@ -101,7 +111,7 @@ public class WorkOrderService
         workOrder.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return MapToResponse(workOrder);
+        return await GetByIdAsync(id);
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -130,7 +140,7 @@ public class WorkOrderService
         workOrder.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return MapToResponse(workOrder);
+        return await GetByIdAsync(id);
     }
 
     private async Task ValidateCustomerForCenterAsync(int? customerId, int centerId)
@@ -178,23 +188,29 @@ public class WorkOrderService
             throw new InvalidOperationException("Schedule conflict detected.");
     }
 
-    private static WorkOrderResponse MapToResponse(WorkOrder w) => new()
+    private static WorkOrderResponse MapToResponse(WorkOrder w)
     {
-        Id = w.Id,
-        CenterId = w.CenterId,
-        CustomerId = w.CustomerId,
-        InquiryId = w.InquiryId,
-        EquipmentId = w.EquipmentId,
-        ResponsibleUserId = w.ResponsibleUserId,
-        Description = w.Description,
-        Type = w.Type.ToString(),
-        Status = w.Status.ToString(),
-        ScheduledStartDate = w.ScheduledStartDate,
-        ScheduledEndDate = w.ScheduledEndDate,
-        ActualStartDate = w.ActualStartDate,
-        ActualEndDate = w.ActualEndDate,
-        TotalMaterialCost = w.TotalMaterialCost,
-        CreatedAt = w.CreatedAt,
-        UpdatedAt = w.UpdatedAt
-    };
+        var sym = string.IsNullOrWhiteSpace(w.Center?.CurrencySymbol) ? "₹" : w.Center.CurrencySymbol;
+        return new WorkOrderResponse
+        {
+            Id = w.Id,
+            CenterId = w.CenterId,
+            CustomerId = w.CustomerId,
+            InquiryId = w.InquiryId,
+            EquipmentId = w.EquipmentId,
+            ResponsibleUserId = w.ResponsibleUserId,
+            Description = w.Description,
+            Type = w.Type.ToString(),
+            Status = w.Status.ToString(),
+            ScheduledStartDate = w.ScheduledStartDate,
+            ScheduledEndDate = w.ScheduledEndDate,
+            ActualStartDate = w.ActualStartDate,
+            ActualEndDate = w.ActualEndDate,
+            TotalMaterialCost = w.TotalMaterialCost,
+            CreatedAt = w.CreatedAt,
+            UpdatedAt = w.UpdatedAt,
+            EquipmentName = w.Equipment?.Name,
+            CurrencySymbol = sym
+        };
+    }
 }

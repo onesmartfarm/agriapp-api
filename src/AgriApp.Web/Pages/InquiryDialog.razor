@@ -39,7 +39,7 @@
                         @foreach (var eq in _equipmentList)
                         {
                             <MudSelectItem T="int" Value="@eq.Id">
-                                @eq.Name (@eq.Category · ₹@eq.HourlyRate.ToString("N0")/hr)
+                                @eq.Name (@eq.Category · @eq.CurrencySymbol@eq.HourlyRate.ToString("N0")/hr)
                             </MudSelectItem>
                         }
                     </MudSelect>

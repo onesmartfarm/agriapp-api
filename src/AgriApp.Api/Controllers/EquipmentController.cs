@@ -40,7 +40,7 @@ public class EquipmentController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateEquipmentRequest request)
     {
         if (!Enum.TryParse<EquipmentCategory>(request.Category, out var category))
-            return BadRequest(new { error = "Invalid category. Must be Tractor, Drone, or BioCNG" });
+            return BadRequest(new { error = "Invalid category. Must be Tractor, Drone, BioCNG, or Vehicle" });
 
         int centerId;
         if (_currentUser.Role == Role.SuperUser)

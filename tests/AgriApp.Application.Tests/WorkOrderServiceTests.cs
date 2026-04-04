@@ -39,6 +39,35 @@ public sealed class WorkOrderServiceTests
             .Options;
 
         _db = new AgriDbContext(options, SuperUser());
+        _db.Centers.Add(new Center
+        {
+            Id = 1,
+            Name = "Test Center",
+            Location = "Test",
+            CurrencySymbol = "₹",
+            TimeZoneId = "India Standard Time",
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Users.Add(new User
+        {
+            Id = 1,
+            Name = "Staff",
+            Email = $"wo-staff-{Guid.NewGuid():N}@test.com",
+            PasswordHash = "x",
+            Role = Role.Staff,
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Equipment.Add(new Equipment
+        {
+            Id = 10,
+            Name = "Combine",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 100m,
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.SaveChanges();
         _service = new WorkOrderService(_db);
     }
 

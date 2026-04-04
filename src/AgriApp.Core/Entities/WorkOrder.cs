@@ -7,6 +7,7 @@ public class WorkOrder : ICenterScoped, IAuditable
 {
     public int Id { get; set; }
     public int CenterId { get; set; }
+    public Center Center { get; set; } = null!;
     public int? CustomerId { get; set; }
     public int? InquiryId { get; set; }
     public int? EquipmentId { get; set; }

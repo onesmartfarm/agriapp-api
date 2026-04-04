@@ -24,13 +24,13 @@
                 <MudSimpleTable Dense="true" Striped="true">
                     <tbody>
                         <tr><td>Hours</td><td>@_quote.Hours.ToString("N1")</td></tr>
-                        <tr><td>Base Amount</td><td>₹ @_quote.Pricing.BaseAmount.ToString("N2")</td></tr>
-                        <tr><td>CGST (9%)</td><td>₹ @_quote.Pricing.Cgst.ToString("N2")</td></tr>
-                        <tr><td>SGST (9%)</td><td>₹ @_quote.Pricing.Sgst.ToString("N2")</td></tr>
-                        <tr><td><b>Total (incl. GST)</b></td><td><b>₹ @_quote.Pricing.GrandTotal.ToString("N2")</b></td></tr>
+                        <tr><td>Base Amount</td><td>@_sym @_quote.Pricing.BaseAmount.ToString("N2")</td></tr>
+                        <tr><td>CGST (9%)</td><td>@_sym @_quote.Pricing.Cgst.ToString("N2")</td></tr>
+                        <tr><td>SGST (9%)</td><td>@_sym @_quote.Pricing.Sgst.ToString("N2")</td></tr>
+                        <tr><td><b>Total (incl. GST)</b></td><td><b>@_sym @_quote.Pricing.GrandTotal.ToString("N2")</b></td></tr>
                         <tr><td>Commission Rate</td><td>@((_quote.Commission.CommissionRate * 100).ToString("N0"))%</td></tr>
-                        <tr><td>Commission Amount</td><td>₹ @_quote.Commission.CommissionAmount.ToString("N2")</td></tr>
-                        <tr><td>Net to Company</td><td>₹ @_quote.Commission.NetToCompany.ToString("N2")</td></tr>
+                        <tr><td>Commission Amount</td><td>@_sym @_quote.Commission.CommissionAmount.ToString("N2")</td></tr>
+                        <tr><td>Net to Company</td><td>@_sym @_quote.Commission.NetToCompany.ToString("N2")</td></tr>
                     </tbody>
                 </MudSimpleTable>
             }
@@ -53,6 +53,8 @@
     private bool _loading = false;
     private string? _error;
     private EquipmentQuoteResult? _quote;
+
+    private string _sym => string.IsNullOrWhiteSpace(Equipment?.CurrencySymbol) ? "₹" : Equipment.CurrencySymbol;
 
     private async Task CalculateQuote()
     {

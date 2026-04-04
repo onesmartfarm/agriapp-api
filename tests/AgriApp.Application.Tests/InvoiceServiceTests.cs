@@ -38,6 +38,48 @@ public sealed class InvoiceServiceTests
 
         _db = new AgriDbContext(options, SuperUser());
         _service = new InvoiceService(_db);
+        SeedInvoiceLookupGraph();
+    }
+
+    /// <summary>Center, customer, user, and equipment required for invoice projections and work orders.</summary>
+    private void SeedInvoiceLookupGraph()
+    {
+        _db.Centers.Add(new Center
+        {
+            Id = 1,
+            Name = "Test Center",
+            Location = "Test",
+            CurrencySymbol = "₹",
+            TimeZoneId = "India Standard Time",
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Customers.Add(new Customer
+        {
+            Id = 1,
+            Name = "Test Customer",
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Users.Add(new User
+        {
+            Id = 1,
+            Name = "Staff",
+            Email = $"staff-{Guid.NewGuid():N}@test.com",
+            PasswordHash = "x",
+            Role = Role.Staff,
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Equipment.Add(new Equipment
+        {
+            Id = 1,
+            Name = "Tractor",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 100m,
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.SaveChanges();
     }
 
     [TestCleanup]

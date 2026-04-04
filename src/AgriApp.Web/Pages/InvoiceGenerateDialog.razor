@@ -16,7 +16,8 @@
                                  FullWidth="true" For="@(() => _form.CustomerId)" />
                 @if (_isSuperUser)
                 {
-                    <MudSelect T="int?" @bind-Value="_form.CenterId" Label="Center (optional override)"
+                    <MudSelect T="int?" Value="_form.CenterId" ValueChanged="OnInvoiceCenterChangedAsync"
+                               Label="Center (optional override)"
                                FullWidth="true" Disabled="_loadingCenters">
                         <MudSelectItem T="int?" Value="@((int?)null)">— From your token —</MudSelectItem>
                         @foreach (var c in _centerList)
@@ -26,7 +27,7 @@
                     </MudSelect>
                 }
                 <MudDatePicker @bind-Date="_dueDate" Label="Due Date" />
-                <MudNumericField @bind-Value="_form.AdditionalFees" Label="Additional Fees (₹)"
+                <MudNumericField @bind-Value="_form.AdditionalFees" Label="@($"Additional Fees ({_feeCurrencySymbol})")"
                                  Format="N2" FullWidth="true" For="@(() => _form.AdditionalFees)" />
                 <ValidationSummary />
                 @if (!string.IsNullOrEmpty(_error))
@@ -57,6 +58,7 @@
     private bool _isSuperUser;
     private List<CenterResponse> _centerList = new();
     private bool _loadingCenters;
+    private string _feeCurrencySymbol = "₹";
 
     protected override async Task OnInitializedAsync()
     {
@@ -80,6 +82,38 @@
             {
                 _loadingCenters = false;
             }
+        }
+
+        await RefreshFeeCurrencyAsync();
+    }
+
+    private async Task OnInvoiceCenterChangedAsync(int? value)
+    {
+        _form.CenterId = value;
+        await RefreshFeeCurrencyAsync();
+    }
+
+    private async Task RefreshFeeCurrencyAsync()
+    {
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var cid = _form.CenterId;
+            if (cid is null or 0 && int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var t) && t > 0)
+                cid = t;
+            if (cid is null or 0)
+            {
+                _feeCurrencySymbol = "₹";
+                return;
+            }
+
+            var c = await CenterService.GetByIdAsync(cid.Value);
+            if (c != null && !string.IsNullOrWhiteSpace(c.CurrencySymbol))
+                _feeCurrencySymbol = c.CurrencySymbol;
+        }
+        catch
+        {
+            _feeCurrencySymbol = "₹";
         }
     }
 

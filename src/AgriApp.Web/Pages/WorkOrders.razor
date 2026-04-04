@@ -41,7 +41,11 @@
                                     </span>
                                 </CellTemplate>
                             </PropertyColumn>
-                            <PropertyColumn Property="x => x.TotalMaterialCost" Title="Cost" Format="C" Sortable="true" />
+                            <TemplateColumn Title="Materials cost" Sortable="true" SortBy="@(x => x.TotalMaterialCost)">
+                                <CellTemplate Context="costCtx">
+                                    @costCtx.Item.CurrencySymbol @costCtx.Item.TotalMaterialCost.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
                             <TemplateColumn Title="Actions">
                                 <CellTemplate Context="actionCtx">
                                     <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditDialog(actionCtx.Item.Id)" />

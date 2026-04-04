@@ -79,4 +79,7 @@ public class WorkOrderResponse
     public decimal TotalMaterialCost { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    public string? EquipmentName { get; set; }
+    public string CurrencySymbol { get; set; } = "₹";
 }

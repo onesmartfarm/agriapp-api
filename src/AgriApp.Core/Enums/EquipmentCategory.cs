@@ -4,5 +4,6 @@ public enum EquipmentCategory
 {
     Tractor,
     Drone,
-    BioCNG
+    BioCNG,
+    Vehicle
 }

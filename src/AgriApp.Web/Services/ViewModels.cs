@@ -14,7 +14,8 @@ public record WorkOrderListItem(
     DateTime ScheduledStartDate,
     DateTime ScheduledEndDate,
     string? EquipmentName,
-    decimal TotalMaterialCost);
+    decimal TotalMaterialCost,
+    string CurrencySymbol);
 
 public record AttendanceClockRequest(
     string Action,
@@ -45,6 +46,8 @@ public record EquipmentResponse(
     string Category,
     decimal HourlyRate,
     int CenterId,
+    string CenterName,
+    string CurrencySymbol,
     int? VendorId,
     decimal? PurchaseCost,
     DateTime? PurchaseDate,
@@ -76,6 +79,8 @@ public record CenterResponse(
     int Id,
     string Name,
     string? Location,
+    string CurrencySymbol,
+    string TimeZoneId,
     int? AdminUserId);
 
 public record QuoteGstBreakdown(
@@ -171,10 +176,14 @@ public record CreateVendorRequest
 public record InquiryResponse(
     int Id,
     int CustomerId,
+    string CustomerName,
     int EquipmentId,
+    string EquipmentName,
     int SalespersonId,
+    string SalespersonName,
     string Status,
     int CenterId,
+    string CenterName,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
@@ -205,6 +214,9 @@ public record InvoiceResponse(
     int CenterId,
     int WorkOrderId,
     int CustomerId,
+    string CustomerName,
+    string CenterName,
+    string CurrencySymbol,
     decimal BaseAmount,
     decimal GstAmount,
     decimal TotalAmount,
@@ -285,7 +297,9 @@ public record WorkOrderDetail(
     string Status,
     DateTime ScheduledStartDate,
     DateTime ScheduledEndDate,
-    decimal TotalMaterialCost);
+    decimal TotalMaterialCost,
+    string? EquipmentName,
+    string CurrencySymbol);
 
 public record WorkOrderFormRequest
 {

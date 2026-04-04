@@ -58,6 +58,8 @@ public class AgriDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Location).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.CurrencySymbol).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.TimeZoneId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.AdminUser)
@@ -221,6 +223,11 @@ public class AgriDbContext : DbContext
                   .HasForeignKey(e => e.CustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(e => e.Center)
+                  .WithMany(c => c.WorkOrders)
+                  .HasForeignKey(e => e.CenterId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasOne(e => e.ResponsibleUser)
                   .WithMany(u => u.AssignedWorkOrders)
                   .HasForeignKey(e => e.ResponsibleUserId)
@@ -366,6 +373,11 @@ public class AgriDbContext : DbContext
             entity.HasOne(e => e.WorkOrder)
                   .WithMany()
                   .HasForeignKey(e => e.WorkOrderId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Center)
+                  .WithMany(c => c.Invoices)
+                  .HasForeignKey(e => e.CenterId)
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Customer)

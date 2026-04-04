@@ -52,7 +52,9 @@ public class InquiriesController : ControllerBase
             var inquiry = await _service.CreateAsync(
                 request.CustomerId, request.EquipmentId, request.SalespersonId, centerId);
 
-            return Created($"/api/inquiries/{inquiry.Id}", inquiry);
+            var dto = await _service.GetByIdAsync(inquiry.Id)
+                ?? throw new InvalidOperationException("Failed to load inquiry after create.");
+            return Created($"/api/inquiries/{inquiry.Id}", dto);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -68,8 +70,10 @@ public class InquiriesController : ControllerBase
             return BadRequest(new { error = "Invalid status. Must be New, InProgress, Converted, or Closed" });
 
         var inquiry = await _service.UpdateStatusAsync(id, status);
-        return inquiry == null
-            ? NotFound(new { error = "Inquiry not found or access denied" })
-            : Ok(inquiry);
+        if (inquiry == null)
+            return NotFound(new { error = "Inquiry not found or access denied" });
+        var dto = await _service.GetByIdAsync(id)
+            ?? throw new InvalidOperationException("Failed to load inquiry after status update.");
+        return Ok(dto);
     }
 }

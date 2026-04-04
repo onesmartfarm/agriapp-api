@@ -35,6 +35,8 @@ public class CentersController : ControllerBase
                 Id = c.Id,
                 Name = c.Name,
                 Location = c.Location,
+                CurrencySymbol = c.CurrencySymbol,
+                TimeZoneId = c.TimeZoneId,
                 AdminUserId = c.AdminUserId
             })
             .ToListAsync();
@@ -60,6 +62,8 @@ public class CentersController : ControllerBase
                 Id = c.Id,
                 Name = c.Name,
                 Location = c.Location,
+                CurrencySymbol = c.CurrencySymbol,
+                TimeZoneId = c.TimeZoneId,
                 AdminUserId = c.AdminUserId
             })
             .FirstOrDefaultAsync();

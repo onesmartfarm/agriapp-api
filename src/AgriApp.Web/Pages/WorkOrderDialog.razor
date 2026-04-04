@@ -5,6 +5,7 @@
 @inject IEquipmentService EquipmentService
 @inject IUserService UserService
 @inject ICustomerService CustomerService
+@inject ICenterService CenterService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 
@@ -37,7 +38,7 @@
                         @foreach (var eq in _equipmentList)
                         {
                             <MudSelectItem T="int?" Value="@((int?)eq.Id)">
-                                @eq.Name (@eq.Category · ₹@eq.HourlyRate.ToString("N0")/hr)
+                                @eq.Name (@eq.Category · @eq.CurrencySymbol@eq.HourlyRate.ToString("N0")/hr)
                             </MudSelectItem>
                         }
                     </MudSelect>
@@ -115,6 +116,7 @@
                     @* ── Billing Summary Bar ────────────────────────────────── *@
                     @{
                         var selectedEq = _equipmentList.FirstOrDefault(e => e.Id == _form.EquipmentId);
+                        var billSym = string.IsNullOrWhiteSpace(selectedEq?.CurrencySymbol) ? _centerCurrencySymbol : selectedEq!.CurrencySymbol;
                         var billableHrs = _spans.Where(s => s.IsBillable).Sum(s => s.Hours);
                         var nonBillHrs = _spans.Where(s => !s.IsBillable).Sum(s => s.Hours);
                         var calculatedAmt = selectedEq != null
@@ -139,10 +141,10 @@
                             {
                                 <MudText>
                                     <span style="color:#1976d2; font-weight:600">
-                                        ≈ ₹@calculatedAmt.ToString("N2")
+                                        ≈ @billSym@calculatedAmt.ToString("N2")
                                     </span>
                                     <span class="mud-text-secondary">
-                                        (@billableHrs.ToString("N1") h × ₹@selectedEq.HourlyRate.ToString("N0")/hr)
+                                        (@billableHrs.ToString("N1") h × @billSym@selectedEq.HourlyRate.ToString("N0")/hr)
                                     </span>
                                 </MudText>
                             }
@@ -156,7 +158,7 @@
                     </MudPaper>
 
                     <MudNumericField @bind-Value="_form.TotalMaterialCost"
-                                     Label="Materials / other charges — ₹ (excludes rental; rental uses Working spans × equipment rate at invoice)"
+                                     Label="@($"Materials / other charges — {_centerCurrencySymbol} (excludes rental; rental uses Working spans × equipment rate at invoice)")"
                                      Format="N2" FullWidth="true"
                                      For="@(() => _form.TotalMaterialCost)" />
 
@@ -181,7 +183,7 @@
                                 @_detail.Type ·
                                 @_detail.ScheduledStartDate.ToString("yyyy-MM-dd HH:mm") →
                                 @_detail.ScheduledEndDate.ToString("yyyy-MM-dd HH:mm")
-                                · ₹@_detail.TotalMaterialCost.ToString("N2")
+                                · @_detail.CurrencySymbol@_detail.TotalMaterialCost.ToString("N2")
                             </MudText>
                         </MudPaper>
                         <MudDivider />
@@ -257,6 +259,7 @@
     private bool _saving = false;
     private bool _loadingLookups = false;
     private string? _error;
+    private string _centerCurrencySymbol = "₹";
 
     private List<SpanEntry> _spans = new() { new SpanEntry() };
 
@@ -300,6 +303,13 @@
             var auth = await AuthStateProvider.GetAuthenticationStateAsync();
             if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var centerId) && centerId > 0)
                 _form.CenterId = centerId;
+
+            if (_form.CenterId is > 0)
+            {
+                var c = await CenterService.GetByIdAsync(_form.CenterId.Value);
+                if (c != null && !string.IsNullOrWhiteSpace(c.CurrencySymbol))
+                    _centerCurrencySymbol = c.CurrencySymbol;
+            }
         }
         catch (Exception ex)
         {
@@ -317,6 +327,8 @@
             {
                 _statusForm.Status = _detail.Status;
                 _form.CustomerId = _detail.CustomerId;
+                if (!string.IsNullOrWhiteSpace(_detail.CurrencySymbol))
+                    _centerCurrencySymbol = _detail.CurrencySymbol;
             }
         }
     }

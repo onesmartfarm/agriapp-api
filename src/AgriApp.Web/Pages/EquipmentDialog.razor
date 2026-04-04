@@ -12,6 +12,13 @@
         <EditForm id="eqForm" Model="_form" OnValidSubmit="Save">
             <DataAnnotationsValidator />
             <MudStack Spacing="3">
+                @if (IsCreate && _headerCenter != null)
+                {
+                    <MudText Typo="Typo.subtitle1">
+                        Adding equipment to: @_headerCenter.Name (@_headerCenter.CurrencySymbol)
+                    </MudText>
+                }
+
                 <MudTextField @bind-Value="_form.Name" Label="Name" FullWidth="true"
                               For="@(() => _form.Name)" />
 
@@ -22,13 +29,14 @@
                     }
                 </MudSelect>
 
-                <MudNumericField @bind-Value="_form.HourlyRate" Label="Hourly Rate (₹)"
+                <MudNumericField @bind-Value="_form.HourlyRate" Label="@($"Hourly Rate ({CurrencySymbol})")"
                                  Format="N2" FullWidth="true"
                                  For="@(() => _form.HourlyRate)" />
 
                 @if (IsCreate && _isSuperUser)
                 {
-                    <MudSelect T="int" @bind-Value="_form.CenterId" Label="Center"
+                    <MudSelect T="int" Value="_form.CenterId" ValueChanged="OnCreateCenterChangedAsync"
+                               Label="Center"
                                FullWidth="true" Disabled="_loadingCenters">
                         @foreach (var c in _centerList)
                         {
@@ -54,7 +62,7 @@
                     }
                 </MudSelect>
 
-                <MudNumericField @bind-Value="_form.PurchaseCost" Label="Purchase Cost (₹) (optional)"
+                <MudNumericField @bind-Value="_form.PurchaseCost" Label="@($"Purchase Cost ({CurrencySymbol}) (optional)")"
                                  Format="N2" FullWidth="true" />
 
                 <MudDatePicker @bind-Date="_purchaseDate" Label="Purchase Date (optional)" />
@@ -98,6 +106,11 @@
     private bool _isSuperUser;
     private List<CenterResponse> _centerList = new();
     private bool _loadingCenters;
+    private CenterResponse? _headerCenter;
+    private string _editCurrencySymbol = "₹";
+
+    private string CurrencySymbol =>
+        IsCreate ? (_headerCenter?.CurrencySymbol ?? "₹") : _editCurrencySymbol;
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,7 +125,10 @@
                 {
                     _centerList = await CenterService.GetAllAsync();
                     if (_centerList.Count > 0)
+                    {
                         _form.CenterId = _centerList[0].Id;
+                        _headerCenter = _centerList[0];
+                    }
                 }
                 catch { /* snackbar optional */ }
                 finally
@@ -124,6 +140,11 @@
             {
                 _form.CenterId = cid;
                 _centerLabel = "Equipment will be created for your center.";
+                try
+                {
+                    _headerCenter = await CenterService.GetByIdAsync(cid);
+                }
+                catch { /* optional */ }
             }
         }
 
@@ -150,8 +171,16 @@
                 _form.VendorId = eq.VendorId;
                 _form.PurchaseCost = eq.PurchaseCost;
                 _purchaseDate = eq.PurchaseDate?.ToLocalTime();
+                _editCurrencySymbol = string.IsNullOrWhiteSpace(eq.CurrencySymbol) ? "₹" : eq.CurrencySymbol;
             }
         }
+    }
+
+    private Task OnCreateCenterChangedAsync(int value)
+    {
+        _form.CenterId = value;
+        _headerCenter = _centerList.FirstOrDefault(c => c.Id == value);
+        return Task.CompletedTask;
     }
 
     private async Task Save()

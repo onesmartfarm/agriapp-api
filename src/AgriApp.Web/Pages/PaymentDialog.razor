@@ -9,10 +9,10 @@
             <DataAnnotationsValidator />
             <MudStack Spacing="3">
                 <MudAlert Severity="Severity.Info">
-                    Balance Due: <b>₹ @BalanceDue.ToString("N2")</b>
+                    Balance Due: <b>@CurrencySymbol @BalanceDue.ToString("N2")</b>
                 </MudAlert>
 
-                <MudNumericField @bind-Value="_form.Amount" Label="Payment Amount (₹)"
+                <MudNumericField @bind-Value="_form.Amount" Label="@($"Payment Amount ({CurrencySymbol})")"
                                  Format="N2" FullWidth="true" For="@(() => _form.Amount)" />
 
                 <MudSelect @bind-Value="_form.PaymentMethod" Label="Payment Method" FullWidth="true">
@@ -39,7 +39,7 @@
                 {
                     <MudAlert Severity="Severity.Success">
                         Payment recorded. Invoice status: <b>@_result.InvoiceStatus</b>.
-                        Balance remaining: ₹ @_result.InvoiceBalanceDue.ToString("N2")
+                        Balance remaining: @CurrencySymbol @_result.InvoiceBalanceDue.ToString("N2")
                     </MudAlert>
                 }
             </MudStack>
@@ -67,6 +67,9 @@
 
     [Parameter]
     public decimal BalanceDue { get; set; }
+
+    [Parameter]
+    public string CurrencySymbol { get; set; } = "₹";
 
     private PaymentRecordRequest _form = new();
     private bool _saving = false;
@@ -105,6 +108,12 @@
 
     private void CloseDialog()
     {
-        try { if (MudDialog != null) MudDialog.Close(); } catch { }
+        try
+        {
+            if (MudDialog == null) return;
+            if (_result != null) MudDialog.Close();
+            else MudDialog.Cancel();
+        }
+        catch { }
     }
 }

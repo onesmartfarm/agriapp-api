@@ -176,13 +176,77 @@ static async Task SeedDatabase(WebApplication app)
 
     if (await db.Centers.AnyAsync()) return;
 
-    var center = new Center
+    var sangola = new Center
     {
-        Name = "AgriCenter Pune",
-        Location = "Pune, Maharashtra, India",
+        Name = "Sangola Agri-Center",
+        Location = "Sangola, Maharashtra, India",
+        CurrencySymbol = "₹",
+        TimeZoneId = "India Standard Time",
         CreatedAt = DateTime.UtcNow
     };
-    db.Centers.Add(center);
+    var edison = new Center
+    {
+        Name = "Edison NJ Hub",
+        Location = "Edison, NJ, USA",
+        CurrencySymbol = "$",
+        TimeZoneId = "Eastern Standard Time",
+        CreatedAt = DateTime.UtcNow
+    };
+    db.Centers.AddRange(sangola, edison);
+    await db.SaveChangesAsync();
+
+    var vendorDeere = new Vendor
+    {
+        Name = "John Deere Sangola",
+        CenterId = sangola.Id,
+        CreatedAt = DateTime.UtcNow
+    };
+    var vendorMazda = new Vendor
+    {
+        Name = "Mazda Financial Services (Edison)",
+        CenterId = edison.Id,
+        CreatedAt = DateTime.UtcNow
+    };
+    db.Vendors.AddRange(vendorDeere, vendorMazda);
+    await db.SaveChangesAsync();
+
+    var customerBafna = new Customer
+    {
+        Name = "Bafna Farms (Pune)",
+        CenterId = sangola.Id,
+        CreatedAt = DateTime.UtcNow
+    };
+    var customerEdison = new Customer
+    {
+        Name = "Edison Property Management",
+        CenterId = edison.Id,
+        CreatedAt = DateTime.UtcNow
+    };
+    db.Customers.AddRange(customerBafna, customerEdison);
+    await db.SaveChangesAsync();
+
+    var equipment = new[]
+    {
+        new Equipment
+        {
+            Name = "John Deere 5405 Tractor",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 1500.00m,
+            CenterId = sangola.Id,
+            VendorId = vendorDeere.Id,
+            CreatedAt = DateTime.UtcNow
+        },
+        new Equipment
+        {
+            Name = "2025 Mazda CX-90 PHEV",
+            Category = EquipmentCategory.Vehicle,
+            HourlyRate = 85.00m,
+            CenterId = edison.Id,
+            VendorId = vendorMazda.Id,
+            CreatedAt = DateTime.UtcNow
+        }
+    };
+    db.Equipment.AddRange(equipment);
     await db.SaveChangesAsync();
 
     var users = new[]
@@ -198,42 +262,59 @@ static async Task SeedDatabase(WebApplication app)
         },
         new User
         {
-            Name = "Rajesh Kumar",
-            Email = "rajesh@agriapp.com",
+            Name = "Vikram Desai",
+            Email = "vikram@sangola.agriapp.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
             Role = Role.Manager,
-            CenterId = center.Id,
+            CenterId = sangola.Id,
             CreatedAt = DateTime.UtcNow
         },
         new User
         {
-            Name = "Priya Sharma",
-            Email = "priya@agriapp.com",
+            Name = "Sneha Kulkarni",
+            Email = "sneha@sangola.agriapp.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Sales123!"),
             Role = Role.Sales,
-            CenterId = center.Id,
+            CenterId = sangola.Id,
             CreatedAt = DateTime.UtcNow
         },
         new User
         {
-            Name = "Amit Patel",
-            Email = "amit@agriapp.com",
+            Name = "Ravi Jadhav",
+            Email = "ravi@sangola.agriapp.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff123!"),
             Role = Role.Staff,
-            CenterId = center.Id,
+            CenterId = sangola.Id,
+            CreatedAt = DateTime.UtcNow
+        },
+        new User
+        {
+            Name = "James Morrison",
+            Email = "james@edison.agriapp.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
+            Role = Role.Manager,
+            CenterId = edison.Id,
+            CreatedAt = DateTime.UtcNow
+        },
+        new User
+        {
+            Name = "Maria Gonzalez",
+            Email = "maria@edison.agriapp.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Sales123!"),
+            Role = Role.Sales,
+            CenterId = edison.Id,
+            CreatedAt = DateTime.UtcNow
+        },
+        new User
+        {
+            Name = "Alex Nguyen",
+            Email = "alex@edison.agriapp.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff123!"),
+            Role = Role.Staff,
+            CenterId = edison.Id,
             CreatedAt = DateTime.UtcNow
         }
     };
     db.Users.AddRange(users);
-    await db.SaveChangesAsync();
-
-    var equipment = new[]
-    {
-        new Equipment { Name = "John Deere 5405", Category = EquipmentCategory.Tractor, HourlyRate = 1500.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-        new Equipment { Name = "DJI Agras T40", Category = EquipmentCategory.Drone, HourlyRate = 2500.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-        new Equipment { Name = "Bio-CNG Generator 500", Category = EquipmentCategory.BioCNG, HourlyRate = 800.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-        new Equipment { Name = "Mahindra 575 DI", Category = EquipmentCategory.Tractor, HourlyRate = 1200.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-    };
-    db.Equipment.AddRange(equipment);
     await db.SaveChangesAsync();
 }

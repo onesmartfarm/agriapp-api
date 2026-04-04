@@ -40,8 +40,16 @@
                                     </span>
                                 </CellTemplate>
                             </PropertyColumn>
-                            <PropertyColumn Property="x => x.HourlyRate" Title="Hourly Rate (₹)" Format="N2" Sortable="true" />
-                            <PropertyColumn Property="x => x.CenterId" Title="Center ID" Sortable="true" />
+                            <TemplateColumn Title="Hourly Rate" Sortable="true" SortBy="@(x => x.HourlyRate)">
+                                <CellTemplate Context="rateCtx">
+                                    @rateCtx.Item.CurrencySymbol @rateCtx.Item.HourlyRate.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Center" Sortable="true" SortBy="@(x => x.CenterName)">
+                                <CellTemplate Context="cenCtx">
+                                    @cenCtx.Item.CenterName
+                                </CellTemplate>
+                            </TemplateColumn>
                             <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd" Sortable="true" />
                             <TemplateColumn Title="Actions">
                                 <CellTemplate Context="actCtx">
@@ -152,6 +160,7 @@
         "Tractor" => "#4caf50",
         "Drone"   => "#2196f3",
         "BioCNG"  => "#ff9800",
+        "Vehicle" => "#607d8b",
         _         => "#9e9e9e"
     };
 }
