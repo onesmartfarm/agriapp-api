@@ -1,36 +1,142 @@
-# AgriApp — AI / Cursor Constitution
+# AgriApp — Project Constitution (Source of Truth)
 
-## Project identity
+This file governs **all future code generation** for this repository. When in doubt, follow these rules over ad-hoc patterns.
 
-This is a **.NET 8 Clean Architecture** solution. Layers include **AgriApp.Core**, **AgriApp.Application**, **AgriApp.Infrastructure**, **AgriApp.Api**, and **AgriApp.Web**. The frontend is **Blazor WebAssembly** (`AgriApp.Web`) using **MudBlazor**.
+**No frontend entity duplication:** **`AgriApp.Web` MUST NOT** recreate database entities or parallel domain types. Use **`AgriApp.Core.Entities`** and **`AgriApp.Core.Enums`** only (project reference).
 
-## No frontend entity duplication
+---
 
-The **Web** project **MUST NOT** recreate database entities or duplicate domain models that belong in Core. The frontend must strictly reference **`AgriApp.Core.Entities`** and **`AgriApp.Core.Enums`** (via project reference) instead of inventing parallel entity types.
+## 1. Core tech stack and architecture
 
-## Frontend DTOs (request/response)
+### Backend
 
-Any new **Request/Response** (or similar view-facing) models needed by the frontend **MUST** be added as **`record`** types in:
+- **.NET 8**, **Clean Architecture**: **AgriApp.Core**, **AgriApp.Application**, **AgriApp.Infrastructure**, **AgriApp.Api**.
+- **EF Core** for persistence (Infrastructure).
+- **JWT** authentication on the API (`Microsoft.AspNetCore.Authentication.JwtBearer`).
 
-`src/AgriApp.Web/Services/ViewModels.cs`
+### Frontend
 
-Do **not** create a separate `Models` folder for these DTOs.
+- **Blazor WebAssembly**, **standalone PWA** (service worker / SW manifest in `AgriApp.Web`).
+- **MudBlazor** for UI components.
+- **Blazored.LocalStorage** for client-side storage.
+- **JWT**: Bearer token attached via a dedicated HTTP message handler; `AuthenticationStateProvider` for auth state.
 
-## API clients
+### Layering (non-negotiable)
 
-- All HTTP calls from **AgriApp.Web** must go through **service interfaces** under **`AgriApp.Web.Services`** (implementations in the same area).
-- Use the **named `HttpClient` `"AgriApi"`** (registered in `Program.cs` / `IHttpClientFactory`).
-- **Wrap HTTP calls in `try`/`catch`**, log failures with **`ILogger`**, and surface user-facing errors appropriately (see global exception shield below).
+- **Core**: entities, enums, domain rules—no UI or infrastructure dependencies.
+- **Application**: use cases, interfaces—no concrete EF or HTTP clients.
+- **Infrastructure**: EF Core, external integrations.
+- **Api**: HTTP surface, auth wiring, mapping to application layer.
+- **Web**: Blazor UI, API client services, view models—references **Core** for **`Entities`** / **`Enums`** only; never duplicate domain entities in the Web project.
 
-## Blazor UI / UX rules
+---
 
-- Every **`<MudButton>`** used for **Cancel** or **Close** **MUST** include **`ButtonType="ButtonType.Button"`** so it does not accidentally submit a parent form.
-- If a bound field is a **foreign key** (e.g. `CenterId`, `CustomerId`), **do not** use a plain text box for that id. **Inject** the related service, **load options in `OnInitializedAsync`**, and bind with **`<MudSelect>`** showing the **human-readable name** (and backing value = id).
+## 2. The “No-ID” UI rule (mandatory)
 
-## Global exception shield
+### Relational lookups (`*Id` properties)
 
-In UI components, when API calls fail, use **`ISnackbar`** with **`Severity.Error`** (and clear messages) so backend/API errors are shown **gracefully** without raw exceptions dumped to the user.
+Whenever a **DTO or entity property name ends with `Id`** (e.g. `EquipmentId`, `CustomerId`, `VendorId`, `CenterId`):
 
-## Scope reminder
+- **Do not** render a **`MudTextField`** (or any free-text input) for that value.
+- **Do** inject the **`I…Service`** that loads the related list.
+- **Do** load options in **`OnInitializedAsync`** (or equivalent lifecycle).
+- **Do** render a **searchable `MudAutocomplete`** or **`MudSelect`** that:
+  - **displays** the related entity’s human-readable field (typically **Name**), and
+  - **binds** the model to the **ID** (the `*Id` property).
 
-Respect **Clean Architecture** boundaries: domain in **Core**, use cases in **Application**, persistence/external services in **Infrastructure**, HTTP API in **Api**, presentation in **Web**.
+### Cancel / Close in dialogs
+
+All **“Cancel”** or **“Close”** buttons **inside `MudDialog` / dialog content** **MUST** use:
+
+`ButtonType="ButtonType.Button"`
+
+so they **never** submit a parent **`EditForm`** by accident.
+
+### Global user feedback for API errors
+
+Use **`ISnackbar`** with **`Severity.Error`** for backend/API failures so users never see raw exceptions or silent failures.
+
+---
+
+## 3. Logging and exception handling standards
+
+### Service implementations (all tiers that perform I/O)
+
+- Inject **`ILogger<T>`** into **every service implementation** (Application handlers, Infrastructure services, **`AgriApp.Web.Services` HTTP clients**, etc.).
+- Wrap **every external API call** and **every database operation** in **`try` / `catch`**.
+- **Log** the **full exception** (use structured logging where the codebase already does).
+- **Re-throw** a **descriptive, user-friendly `ApplicationException`** (or preserve inner exception) so callers can surface a safe message—**do not** swallow errors without logging.
+
+### UI layer (Razor components)
+
+- Wrap **all service calls** (async API operations triggered from the UI) in **`try` / `catch`**.
+- On failure: **`ISnackbar.Add(message, Severity.Error)`** (or equivalent Mud API) with a **clear, non-sensitive** message.
+- **Never** rely on silent failure or uncaught exceptions that only appear in the browser console for expected error paths.
+
+### Web API HTTP clients
+
+- All HTTP calls from **`AgriApp.Web`** go through **interfaces** under **`AgriApp.Web.Services`**, using the named **`HttpClient` `"AgriApi"`** (`IHttpClientFactory`).
+
+---
+
+## 4. Testing standards
+
+### Framework (target for new work)
+
+- **xUnit**, **Moq**, **FluentAssertions**.
+
+### Project layout (mirror architecture)
+
+Create and maintain test assemblies aligned with layers:
+
+- **`AgriApp.UnitTests.Core`**
+- **`AgriApp.UnitTests.Application`**
+- **`AgriApp.UnitTests.Web`**
+
+Place tests next to the code they validate; namespaces should reflect the system under test.
+
+### Coverage expectations
+
+For **every new business-logic service** (or equivalent application service):
+
+- Add at least one **happy path** test.
+- Add at least one **failure case** test (e.g. validation failure, conflict, or **capacity / double-booking** rules where applicable).
+
+### Legacy note
+
+The repository may still contain **`AgriApp.Application.Tests`** using **MSTest**. **Do not add new MSTest tests**; prefer **xUnit + Moq + FluentAssertions** for new tests and migrate legacy projects when you touch them.
+
+---
+
+## 5. Clean code constraints
+
+### C#
+
+- Prefer **C# 12** features where they improve clarity: **primary constructors**, **collection expressions** (`[]`), etc., when consistent with existing files in the same area.
+
+### DTOs and view models
+
+- All **frontend Request/Response** (and similar UI-specific) models **MUST** live in **`src/AgriApp.Web/Services/ViewModels.cs`** as **`record`** types.
+- **Do not** add UI-specific DTOs to **AgriApp.Core**.
+- **Do not** introduce a **`Models`** folder in **Web** for these; keep **`ViewModels.cs`** as the single home unless the team explicitly splits it later with the same rule.
+
+### Namespaces
+
+Follow established roots:
+
+- **`AgriApp.Web.Services`**, **`AgriApp.Web.Pages`**, **`AgriApp.Web.Layout`**, **`AgriApp.Web.Shared`**, **`AgriApp.Web.Security`**, etc.
+
+### API client discipline
+
+- No raw **`HttpClient`** usage scattered in `.razor` files—use injected **`I…Service`** implementations that encapsulate **`"AgriApi"`**.
+
+---
+
+## 6. Quick checklist (before merging)
+
+- [ ] No `MudTextField` for `*Id` lookup fields—use **`MudAutocomplete`** / **`MudSelect`** with loaded options.
+- [ ] Dialog Cancel/Close: **`ButtonType="ButtonType.Button"`**.
+- [ ] Services: **`ILogger<T>`**, **try/catch** on I/O, logged exceptions.
+- [ ] Razor: **try/catch** on service calls + **`ISnackbar`** on error.
+- [ ] New DTOs: **`ViewModels.cs`** **`record`** types only.
+- [ ] New logic: tests per **§4** (xUnit / Moq / FluentAssertions).
