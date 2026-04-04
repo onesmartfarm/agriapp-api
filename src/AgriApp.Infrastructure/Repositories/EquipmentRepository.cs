@@ -17,7 +17,7 @@ public class EquipmentRepository
         => await _context.Equipment.AsNoTracking().ToListAsync();
 
     public async Task<Equipment?> GetByIdAsync(int id)
-        => await _context.Equipment.FindAsync(id);
+        => await _context.Equipment.FirstOrDefaultAsync(e => e.Id == id);
 
     public async Task<Equipment> CreateAsync(Equipment equipment)
     {
@@ -28,7 +28,7 @@ public class EquipmentRepository
 
     public async Task<Equipment?> UpdateAsync(int id, Action<Equipment> updateAction)
     {
-        var equipment = await _context.Equipment.FindAsync(id);
+        var equipment = await _context.Equipment.FirstOrDefaultAsync(e => e.Id == id);
         if (equipment == null) return null;
         updateAction(equipment);
         equipment.UpdatedAt = DateTime.UtcNow;
@@ -38,7 +38,7 @@ public class EquipmentRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var equipment = await _context.Equipment.FindAsync(id);
+        var equipment = await _context.Equipment.FirstOrDefaultAsync(e => e.Id == id);
         if (equipment == null) return false;
         _context.Equipment.Remove(equipment);
         await _context.SaveChangesAsync();

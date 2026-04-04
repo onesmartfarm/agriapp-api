@@ -17,7 +17,7 @@ public class CustomerRepository
         => await _context.Customers.AsNoTracking().ToListAsync();
 
     public async Task<Customer?> GetByIdAsync(int id)
-        => await _context.Customers.FindAsync(id);
+        => await _context.Customers.FirstOrDefaultAsync(c => c.Id == id);
 
     public async Task<Customer> CreateAsync(Customer customer)
     {
@@ -28,7 +28,7 @@ public class CustomerRepository
 
     public async Task<Customer?> UpdateAsync(int id, Action<Customer> update)
     {
-        var customer = await _context.Customers.FindAsync(id);
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == id);
         if (customer == null) return null;
         update(customer);
         customer.UpdatedAt = DateTime.UtcNow;
@@ -38,7 +38,7 @@ public class CustomerRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var customer = await _context.Customers.FindAsync(id);
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == id);
         if (customer == null) return false;
         _context.Customers.Remove(customer);
         await _context.SaveChangesAsync();

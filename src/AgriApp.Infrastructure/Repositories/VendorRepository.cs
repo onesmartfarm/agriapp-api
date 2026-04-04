@@ -17,7 +17,7 @@ public class VendorRepository
         => await _context.Vendors.AsNoTracking().ToListAsync();
 
     public async Task<Vendor?> GetByIdAsync(int id)
-        => await _context.Vendors.FindAsync(id);
+        => await _context.Vendors.FirstOrDefaultAsync(v => v.Id == id);
 
     public async Task<Vendor> CreateAsync(Vendor vendor)
     {
@@ -28,7 +28,7 @@ public class VendorRepository
 
     public async Task<Vendor?> UpdateAsync(int id, Action<Vendor> update)
     {
-        var vendor = await _context.Vendors.FindAsync(id);
+        var vendor = await _context.Vendors.FirstOrDefaultAsync(v => v.Id == id);
         if (vendor == null) return null;
         update(vendor);
         vendor.UpdatedAt = DateTime.UtcNow;
@@ -38,7 +38,7 @@ public class VendorRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var vendor = await _context.Vendors.FindAsync(id);
+        var vendor = await _context.Vendors.FirstOrDefaultAsync(v => v.Id == id);
         if (vendor == null) return false;
         _context.Vendors.Remove(vendor);
         await _context.SaveChangesAsync();

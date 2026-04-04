@@ -65,7 +65,8 @@ public class WorkOrderService
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var workOrder = await _db.WorkOrders.FindAsync(id);
+        // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
+        var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
         if (workOrder == null) return false;
         _db.WorkOrders.Remove(workOrder);
         await _db.SaveChangesAsync();
@@ -74,7 +75,8 @@ public class WorkOrderService
 
     public async Task<WorkOrderResponse?> UpdateStatusAsync(int id, WorkStatus status)
     {
-        var workOrder = await _db.WorkOrders.FindAsync(id);
+        // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
+        var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
         if (workOrder == null) return null;
 
         if (status == WorkStatus.InProgress && workOrder.ActualStartDate == null)
