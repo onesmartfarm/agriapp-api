@@ -73,4 +73,14 @@ public class WorkOrdersController : ControllerBase
             ? NotFound(new { error = "Work order not found or access denied." })
             : Ok(workOrder);
     }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "SuperUser,Manager")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var deleted = await _service.DeleteAsync(id);
+        return deleted
+            ? Ok(new { message = "Work order deleted" })
+            : NotFound(new { error = "Work order not found" });
+    }
 }

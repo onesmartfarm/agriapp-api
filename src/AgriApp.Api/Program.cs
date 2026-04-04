@@ -73,6 +73,8 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<EquipmentRepository>();
 builder.Services.AddScoped<InquiryRepository>();
 builder.Services.AddScoped<WorkOrderRepository>();
+builder.Services.AddScoped<CustomerRepository>();
+builder.Services.AddScoped<VendorRepository>();
 
 builder.Services.AddScoped<EquipmentService>();
 builder.Services.AddScoped<InquiryService>();
@@ -82,6 +84,8 @@ builder.Services.AddScoped<PayrollService>();
 builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<CustomerService>();
+builder.Services.AddScoped<VendorService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

@@ -2,6 +2,7 @@
 @inject IInquiryService InquiryService
 @inject IEquipmentService EquipmentService
 @inject IUserService UserService
+@inject ICustomerService CustomerService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -12,11 +13,19 @@
                 <DataAnnotationsValidator />
                 <MudStack Spacing="3">
 
-                    <MudNumericField @bind-Value="_createForm.CustomerId"
-                                     Label="Customer ID"
-                                     FullWidth="true"
-                                     For="@(() => _createForm.CustomerId)"
-                                     HelperText="Numeric ID of the customer" />
+                    <MudSelect T="int" @bind-Value="_createForm.CustomerId"
+                               Label="Customer"
+                               FullWidth="true"
+                               Disabled="_loadingLookups"
+                               For="@(() => _createForm.CustomerId)">
+                        <MudSelectItem T="int" Value="0">— Select Customer —</MudSelectItem>
+                        @foreach (var c in _customerList)
+                        {
+                            <MudSelectItem T="int" Value="@c.Id">
+                                @c.Name @(c.Phone != null ? $"({c.Phone})" : "")
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
                     <MudSelect T="int" @bind-Value="_createForm.EquipmentId"
                                Label="Equipment"
@@ -116,6 +125,7 @@
 
     private CreateInquiryRequest _createForm = new();
     private UpdateInquiryStatusRequest _statusForm = new();
+    private List<CustomerResponse> _customerList = new();
     private List<EquipmentResponse> _equipmentList = new();
     private List<UserResponse> _salesList = new();
     private bool _saving = false;
@@ -134,9 +144,11 @@
         _loadingLookups = true;
         try
         {
+            var customerTask = CustomerService.GetAllAsync();
             var eqTask = EquipmentService.GetAllAsync();
             var userTask = UserService.GetAllAsync();
-            await Task.WhenAll(eqTask, userTask);
+            await Task.WhenAll(customerTask, eqTask, userTask);
+            _customerList = customerTask.Result;
             _equipmentList = eqTask.Result;
             _salesList = userTask.Result
                 .Where(u => u.Role is "Sales" or "Manager" or "SuperUser")

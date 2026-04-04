@@ -51,7 +51,10 @@ public class EquipmentService : IEquipmentService
                 request.Name,
                 request.Category,
                 request.HourlyRate,
-                request.CenterId
+                request.CenterId,
+                request.VendorId,
+                request.PurchaseCost,
+                request.PurchaseDate
             });
 
             if (response.IsSuccessStatusCode)
@@ -79,7 +82,10 @@ public class EquipmentService : IEquipmentService
             {
                 request.Name,
                 request.Category,
-                request.HourlyRate
+                request.HourlyRate,
+                request.VendorId,
+                request.PurchaseCost,
+                request.PurchaseDate
             });
 
             if (response.IsSuccessStatusCode)

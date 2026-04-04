@@ -14,7 +14,7 @@ public class Inquiry : ICenterScoped, IAuditable
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
-    public User Customer { get; set; } = null!;
+    public Customer Customer { get; set; } = null!;
     public Equipment Equipment { get; set; } = null!;
     public User Salesperson { get; set; } = null!;
 }

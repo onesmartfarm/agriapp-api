@@ -1,6 +1,7 @@
 @using AgriApp.Core.Enums
 @using AgriApp.Web.Services
 @inject IEquipmentService EquipmentService
+@inject IVendorService VendorService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -28,6 +29,24 @@
                                      FullWidth="true"
                                      For="@(() => _form.CenterId)" />
                 }
+
+                <MudSelect T="int?" @bind-Value="_form.VendorId"
+                           Label="Vendor (optional)"
+                           FullWidth="true"
+                           Disabled="_loadingVendors">
+                    <MudSelectItem T="int?" Value="@((int?)null)">— No Vendor —</MudSelectItem>
+                    @foreach (var v in _vendorList)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)v.Id)">
+                            @v.Name @(v.ContactPerson != null ? $"· {v.ContactPerson}" : "")
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudNumericField @bind-Value="_form.PurchaseCost" Label="Purchase Cost (₹) (optional)"
+                                 Format="N2" FullWidth="true" />
+
+                <MudDatePicker @bind-Date="_purchaseDate" Label="Purchase Date (optional)" />
 
                 <ValidationSummary />
 
@@ -59,11 +78,25 @@
     public int EquipmentId { get; set; }
 
     private CreateEquipmentRequest _form = new();
+    private List<VendorResponse> _vendorList = new();
     private bool _saving = false;
+    private bool _loadingVendors = false;
     private string? _error;
+    private DateTime? _purchaseDate;
 
     protected override async Task OnInitializedAsync()
     {
+        _loadingVendors = true;
+        try
+        {
+            _vendorList = await VendorService.GetAllAsync();
+        }
+        catch { }
+        finally
+        {
+            _loadingVendors = false;
+        }
+
         if (!IsCreate && EquipmentId > 0)
         {
             var eq = await EquipmentService.GetByIdAsync(EquipmentId);
@@ -73,12 +106,16 @@
                 _form.Category = eq.Category;
                 _form.HourlyRate = eq.HourlyRate;
                 _form.CenterId = eq.CenterId;
+                _form.VendorId = eq.VendorId;
+                _form.PurchaseCost = eq.PurchaseCost;
+                _purchaseDate = eq.PurchaseDate?.ToLocalTime();
             }
         }
     }
 
     private async Task Save()
     {
+        _form.PurchaseDate = _purchaseDate.HasValue ? DateTime.SpecifyKind(_purchaseDate.Value, DateTimeKind.Utc) : null;
         _saving = true;
         _error = null;
         try
@@ -102,7 +139,10 @@
                 {
                     Name = _form.Name,
                     Category = _form.Category,
-                    HourlyRate = _form.HourlyRate
+                    HourlyRate = _form.HourlyRate,
+                    VendorId = _form.VendorId,
+                    PurchaseCost = _form.PurchaseCost,
+                    PurchaseDate = _form.PurchaseDate
                 };
                 var (success, error, _) = await EquipmentService.UpdateAsync(EquipmentId, update);
                 if (success)

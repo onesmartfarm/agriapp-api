@@ -63,6 +63,15 @@ public class WorkOrderService
         return MapToResponse(workOrder);
     }
 
+    public async Task<bool> DeleteAsync(int id)
+    {
+        var workOrder = await _db.WorkOrders.FindAsync(id);
+        if (workOrder == null) return false;
+        _db.WorkOrders.Remove(workOrder);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<WorkOrderResponse?> UpdateStatusAsync(int id, WorkStatus status)
     {
         var workOrder = await _db.WorkOrders.FindAsync(id);

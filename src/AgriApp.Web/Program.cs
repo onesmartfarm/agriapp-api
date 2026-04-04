@@ -62,6 +62,15 @@ builder.Services.AddScoped<IPaymentService>(sp =>
 builder.Services.AddScoped<IUserService>(sp =>
     new UserService(Api(sp), sp.GetRequiredService<ILogger<UserService>>()));
 
+builder.Services.AddScoped<ICustomerService>(sp =>
+    new CustomerService(Api(sp), sp.GetRequiredService<ILogger<CustomerService>>()));
+
+builder.Services.AddScoped<IVendorService>(sp =>
+    new VendorService(Api(sp), sp.GetRequiredService<ILogger<VendorService>>()));
+
+builder.Services.AddScoped<ICenterService>(sp =>
+    new CenterService(Api(sp), sp.GetRequiredService<ILogger<CenterService>>()));
+
 // ── Localization default culture ─────────────────────────────────────────────
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");

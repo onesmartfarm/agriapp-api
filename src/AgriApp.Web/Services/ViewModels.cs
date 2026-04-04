@@ -45,8 +45,38 @@ public record EquipmentResponse(
     string Category,
     decimal HourlyRate,
     int CenterId,
+    int? VendorId,
+    decimal? PurchaseCost,
+    DateTime? PurchaseDate,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
+
+public record CustomerResponse(
+    int Id,
+    string Name,
+    string? Phone,
+    string? Email,
+    string? Address,
+    int CenterId,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
+
+public record VendorResponse(
+    int Id,
+    string Name,
+    string? ContactPerson,
+    string? Phone,
+    string? Email,
+    string? Address,
+    int CenterId,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
+
+public record CenterResponse(
+    int Id,
+    string Name,
+    string? Location,
+    int? AdminUserId);
 
 public record QuoteGstBreakdown(
     decimal BaseAmount,
@@ -78,6 +108,9 @@ public record CreateEquipmentRequest
     public decimal HourlyRate { get; set; } = 1.0m;
 
     public int CenterId { get; set; } = 1;
+    public int? VendorId { get; set; }
+    public decimal? PurchaseCost { get; set; }
+    public DateTime? PurchaseDate { get; set; }
 }
 
 public record UpdateEquipmentRequest
@@ -88,6 +121,49 @@ public record UpdateEquipmentRequest
 
     [Range(0.01, double.MaxValue, ErrorMessage = "Hourly rate must be positive")]
     public decimal? HourlyRate { get; set; }
+    public int? VendorId { get; set; }
+    public decimal? PurchaseCost { get; set; }
+    public DateTime? PurchaseDate { get; set; }
+}
+
+public record CreateCustomerRequest
+{
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+    [MaxLength(20)]
+    public string? Phone { get; set; }
+    [MaxLength(320)]
+    public string? Email { get; set; }
+    [MaxLength(500)]
+    public string? Address { get; set; }
+    public int CenterId { get; set; }
+}
+
+public record UpdateCustomerRequest
+{
+    [MaxLength(200)]
+    public string? Name { get; set; }
+    [MaxLength(20)]
+    public string? Phone { get; set; }
+    [MaxLength(320)]
+    public string? Email { get; set; }
+    [MaxLength(500)]
+    public string? Address { get; set; }
+}
+
+public record CreateVendorRequest
+{
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+    [MaxLength(200)]
+    public string? ContactPerson { get; set; }
+    [MaxLength(20)]
+    public string? Phone { get; set; }
+    [MaxLength(320)]
+    public string? Email { get; set; }
+    [MaxLength(500)]
+    public string? Address { get; set; }
+    public int CenterId { get; set; }
 }
 
 // ── Inquiry ──────────────────────────────────────────────────────────────────

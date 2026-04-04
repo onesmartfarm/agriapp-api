@@ -15,6 +15,13 @@ public class CreateEquipmentRequest
 
     [Required]
     public int CenterId { get; set; }
+
+    public int? VendorId { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal? PurchaseCost { get; set; }
+
+    public DateTime? PurchaseDate { get; set; }
 }
 
 public class UpdateEquipmentRequest
@@ -25,6 +32,13 @@ public class UpdateEquipmentRequest
 
     [Range(0.01, double.MaxValue, ErrorMessage = "HourlyRate must be positive")]
     public decimal? HourlyRate { get; set; }
+
+    public int? VendorId { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal? PurchaseCost { get; set; }
+
+    public DateTime? PurchaseDate { get; set; }
 }
 
 public class RentalQuoteRequest

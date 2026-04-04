@@ -13,7 +13,7 @@ public class Invoice : ICenterScoped, IAuditable
     /// <summary>FK → work_orders.Id (int, matches existing PK type)</summary>
     public int WorkOrderId { get; set; }
 
-    /// <summary>FK → users.Id — the customer being billed</summary>
+    /// <summary>FK → customers.Id — the customer being billed</summary>
     public int CustomerId { get; set; }
 
     public decimal BaseAmount { get; set; }
@@ -26,6 +26,6 @@ public class Invoice : ICenterScoped, IAuditable
     public DateTime? UpdatedAt { get; set; }
 
     public WorkOrder WorkOrder { get; set; } = null!;
-    public User Customer { get; set; } = null!;
+    public Customer Customer { get; set; } = null!;
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }
