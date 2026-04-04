@@ -60,7 +60,7 @@
 
 @code {
     [CascadingParameter]
-    public dynamic? MudDialog { get; set; }
+    public IMudDialogInstance? MudDialog { get; set; }
 
     [Parameter]
     public Guid InvoiceId { get; set; }
@@ -93,7 +93,7 @@
             {
                 _result = payment;
                 Snackbar.Add("Payment recorded successfully.", Severity.Success);
-                if (MudDialog != null) MudDialog.Close();
+                MudDialog?.Close(DialogResult.Ok(true));
             }
             else
             {
@@ -108,12 +108,10 @@
 
     private void CloseDialog()
     {
-        try
-        {
-            if (MudDialog == null) return;
-            if (_result != null) MudDialog.Close();
-            else MudDialog.Cancel();
-        }
-        catch { }
+        if (MudDialog == null) return;
+        if (_result != null)
+            MudDialog.Close(DialogResult.Ok(true));
+        else
+            MudDialog.Cancel();
     }
 }

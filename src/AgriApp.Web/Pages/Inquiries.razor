@@ -79,6 +79,10 @@
         {
             _inquiries = await InquiryService.GetAllAsync();
         }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
         finally
         {
             _loading = false;
@@ -90,7 +94,7 @@
         var dialog = await DialogService.ShowAsync<InquiryDialog>("New Inquiry",
             new DialogParameters<InquiryDialog> { { x => x.IsCreate, true } });
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadInquiries();
     }
 
@@ -104,7 +108,7 @@
         };
         var dialog = await DialogService.ShowAsync<InquiryDialog>("Update Inquiry Status", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadInquiries();
     }
 

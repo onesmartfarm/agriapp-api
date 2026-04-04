@@ -88,7 +88,7 @@
 
 @code {
     [CascadingParameter]
-    public dynamic? MudDialog { get; set; }
+    public IMudDialogInstance? MudDialog { get; set; }
 
     [Parameter]
     public bool IsCreate { get; set; } = true;
@@ -195,8 +195,8 @@
                 var (success, error, _) = await EquipmentService.CreateAsync(_form);
                 if (success)
                 {
-                    Snackbar.Add("Equipment created.", Severity.Success);
-                    if (MudDialog != null) MudDialog.Close();
+                    Snackbar.Add("Equipment added successfully", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(true));
                 }
                 else
                 {
@@ -218,7 +218,7 @@
                 if (success)
                 {
                     Snackbar.Add("Equipment updated.", Severity.Success);
-                    if (MudDialog != null) MudDialog.Close();
+                    MudDialog?.Close(DialogResult.Ok(true));
                 }
                 else
                 {
@@ -232,8 +232,5 @@
         }
     }
 
-    private void Cancel()
-    {
-        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
-    }
+    private void Cancel() => MudDialog?.Cancel();
 }

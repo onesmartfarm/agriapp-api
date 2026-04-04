@@ -139,7 +139,7 @@
     {
         var dialog = await DialogService.ShowAsync<InvoiceGenerateDialog>("Generate Invoice from Work Order");
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadInvoices();
     }
 
@@ -175,7 +175,7 @@
         };
         var dialog = await DialogService.ShowAsync<PaymentDialog>("Record Payment", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadInvoices();
     }
 

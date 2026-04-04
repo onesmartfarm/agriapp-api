@@ -99,11 +99,8 @@
 
         var dialog = await DialogService.ShowAsync<WorkOrderDialog>("Create Work Order", parameters);
         var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
+        if (result is { Canceled: false })
             await LoadWorkOrders();
-        }
     }
 
     private async Task OpenEditDialog(int id)
@@ -116,11 +113,8 @@
 
         var dialog = await DialogService.ShowAsync<WorkOrderDialog>("Edit Work Order", parameters);
         var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
+        if (result is { Canceled: false })
             await LoadWorkOrders();
-        }
     }
 
     private async Task DeleteWorkOrder(int id)

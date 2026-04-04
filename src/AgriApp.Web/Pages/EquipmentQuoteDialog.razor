@@ -44,7 +44,7 @@
 
 @code {
     [CascadingParameter]
-    public dynamic? MudDialog { get; set; }
+    public IMudDialogInstance? MudDialog { get; set; }
 
     [Parameter]
     public EquipmentResponse Equipment { get; set; } = null!;
@@ -75,8 +75,5 @@
         }
     }
 
-    private void Close()
-    {
-        try { if (MudDialog != null) MudDialog.Close(); } catch { }
-    }
+    private void Close() => MudDialog?.Cancel();
 }

@@ -125,7 +125,7 @@
 
 @code {
     [CascadingParameter]
-    public dynamic? MudDialog { get; set; }
+    public IMudDialogInstance? MudDialog { get; set; }
 
     [Parameter]
     public bool IsCreate { get; set; } = true;
@@ -196,7 +196,7 @@
             if (success)
             {
                 Snackbar.Add("Inquiry created.", Severity.Success);
-                if (MudDialog != null) MudDialog.Close();
+                MudDialog?.Close(DialogResult.Ok(true));
             }
             else
             {
@@ -220,7 +220,7 @@
             if (success)
             {
                 Snackbar.Add("Status updated.", Severity.Success);
-                if (MudDialog != null) MudDialog.Close();
+                MudDialog?.Close(DialogResult.Ok(true));
             }
             else
             {
@@ -234,8 +234,5 @@
         }
     }
 
-    private void Cancel()
-    {
-        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
-    }
+    private void Cancel() => MudDialog?.Cancel();
 }

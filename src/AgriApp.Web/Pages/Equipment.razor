@@ -107,7 +107,7 @@
         var dialog = await DialogService.ShowAsync<EquipmentDialog>("Add Equipment",
             new DialogParameters<EquipmentDialog> { { x => x.IsCreate, true } });
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadEquipment();
     }
 
@@ -120,7 +120,7 @@
         };
         var dialog = await DialogService.ShowAsync<EquipmentDialog>("Edit Equipment", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadEquipment();
     }
 
