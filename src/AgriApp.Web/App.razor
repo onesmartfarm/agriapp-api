@@ -1,25 +1,43 @@
+@inject JwtAuthenticationStateProvider AuthStateProvider
+
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(AgriApp.Web.Layout.MainLayout)">
                 <NotAuthorized>
-                    @if (!context.User.Identity?.IsAuthenticated ?? true)
+                    @if (!context.User.Identity!.IsAuthenticated)
                     {
                         <RedirectToLogin />
                     }
                     else
                     {
-                        <MudAlert Severity="Severity.Error">You are not authorized to view this page.</MudAlert>
+                        <MudAlert Severity="Severity.Error" Class="m-4">
+                            You do not have permission to view this page.
+                        </MudAlert>
                     }
                 </NotAuthorized>
+                <Authorizing>
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="m-4" />
+                </Authorizing>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <PageTitle>Not found</PageTitle>
-            <LayoutView Layout="@typeof(Layout.MainLayout)">
-                <MudAlert Severity="Severity.Warning">Sorry, there's nothing at this address.</MudAlert>
+            <PageTitle>Not Found — AgriApp</PageTitle>
+            <LayoutView Layout="@typeof(AgriApp.Web.Layout.MainLayout)">
+                <MudAlert Severity="Severity.Warning" Class="m-4">
+                    Page not found. <MudLink Href="/">Return to dashboard</MudLink>
+                </MudAlert>
             </LayoutView>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // After Blazor WASM boot completes and JS Interop is safe,
+        // refresh authentication state from LocalStorage.
+        await AuthStateProvider.RefreshAuthenticationStateAsync();
+    }
+}

@@ -63,20 +63,9 @@ public class WorkOrderService
         return MapToResponse(workOrder);
     }
 
-    public async Task<bool> DeleteAsync(int id)
-    {
-        // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
-        var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
-        if (workOrder == null) return false;
-        _db.WorkOrders.Remove(workOrder);
-        await _db.SaveChangesAsync();
-        return true;
-    }
-
     public async Task<WorkOrderResponse?> UpdateStatusAsync(int id, WorkStatus status)
     {
-        // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
-        var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
+        var workOrder = await _db.WorkOrders.FindAsync(id);
         if (workOrder == null) return null;
 
         if (status == WorkStatus.InProgress && workOrder.ActualStartDate == null)

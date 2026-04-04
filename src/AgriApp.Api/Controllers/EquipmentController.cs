@@ -49,9 +49,7 @@ public class EquipmentController : ControllerBase
             centerId = _currentUser.CenterId
                 ?? throw new InvalidOperationException("User must belong to a center");
 
-        var equipment = await _service.CreateAsync(
-            request.Name, category, request.HourlyRate, centerId,
-            request.VendorId, request.PurchaseCost, request.PurchaseDate);
+        var equipment = await _service.CreateAsync(request.Name, category, request.HourlyRate, centerId);
         return Created($"/api/equipment/{equipment.Id}", equipment);
     }
 
@@ -67,9 +65,7 @@ public class EquipmentController : ControllerBase
             category = parsed;
         }
 
-        var equipment = await _service.UpdateAsync(
-            id, request.Name, category, request.HourlyRate,
-            request.VendorId, request.PurchaseCost, request.PurchaseDate);
+        var equipment = await _service.UpdateAsync(id, request.Name, category, request.HourlyRate);
         return equipment == null ? NotFound(new { error = "Equipment not found" }) : Ok(equipment);
     }
 

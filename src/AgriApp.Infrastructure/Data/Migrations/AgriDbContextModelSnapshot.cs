@@ -111,9 +111,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("AdminUserId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -133,8 +130,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AdminUserId");
 
                     b.ToTable("centers", (string)null);
                 });
@@ -187,49 +182,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.ToTable("commission_ledgers", (string)null);
                 });
 
-            modelBuilder.Entity("AgriApp.Core.Entities.Customer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int>("CenterId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CenterId");
-
-                    b.ToTable("customers", (string)null);
-                });
-
             modelBuilder.Entity("AgriApp.Core.Entities.Equipment", b =>
                 {
                     b.Property<int>("Id")
@@ -259,24 +211,12 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<decimal?>("PurchaseCost")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<DateTime?>("PurchaseDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("VendorId")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CenterId");
-
-                    b.HasIndex("VendorId");
 
                     b.ToTable("equipment", (string)null);
                 });
@@ -517,53 +457,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("AgriApp.Core.Entities.Vendor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int>("CenterId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ContactPerson")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CenterId");
-
-                    b.ToTable("vendors", (string)null);
-                });
-
             modelBuilder.Entity("AgriApp.Core.Entities.WorkOrder", b =>
                 {
                     b.Property<int>("Id")
@@ -656,16 +549,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("AgriApp.Core.Entities.Center", b =>
-                {
-                    b.HasOne("AgriApp.Core.Entities.User", "AdminUser")
-                        .WithMany()
-                        .HasForeignKey("AdminUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("AdminUser");
-                });
-
             modelBuilder.Entity("AgriApp.Core.Entities.CommissionLedger", b =>
                 {
                     b.HasOne("AgriApp.Core.Entities.Center", "Center")
@@ -693,17 +576,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("AgriApp.Core.Entities.Customer", b =>
-                {
-                    b.HasOne("AgriApp.Core.Entities.Center", "Center")
-                        .WithMany("Customers")
-                        .HasForeignKey("CenterId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Center");
-                });
-
             modelBuilder.Entity("AgriApp.Core.Entities.Equipment", b =>
                 {
                     b.HasOne("AgriApp.Core.Entities.Center", "Center")
@@ -712,20 +584,13 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("AgriApp.Core.Entities.Vendor", "Vendor")
-                        .WithMany("Equipment")
-                        .HasForeignKey("VendorId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Center");
-
-                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Inquiry", b =>
                 {
-                    b.HasOne("AgriApp.Core.Entities.Customer", "Customer")
-                        .WithMany("Inquiries")
+                    b.HasOne("AgriApp.Core.Entities.User", "Customer")
+                        .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -751,8 +616,8 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("AgriApp.Core.Entities.Invoice", b =>
                 {
-                    b.HasOne("AgriApp.Core.Entities.Customer", "Customer")
-                        .WithMany("Invoices")
+                    b.HasOne("AgriApp.Core.Entities.User", "Customer")
+                        .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -808,17 +673,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("Center");
                 });
 
-            modelBuilder.Entity("AgriApp.Core.Entities.Vendor", b =>
-                {
-                    b.HasOne("AgriApp.Core.Entities.Center", "Center")
-                        .WithMany("Vendors")
-                        .HasForeignKey("CenterId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Center");
-                });
-
             modelBuilder.Entity("AgriApp.Core.Entities.WorkOrder", b =>
                 {
                     b.HasOne("AgriApp.Core.Entities.Equipment", "Equipment")
@@ -846,20 +700,9 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("AgriApp.Core.Entities.Center", b =>
                 {
-                    b.Navigation("Customers");
-
                     b.Navigation("Equipment");
 
                     b.Navigation("Users");
-
-                    b.Navigation("Vendors");
-                });
-
-            modelBuilder.Entity("AgriApp.Core.Entities.Customer", b =>
-                {
-                    b.Navigation("Inquiries");
-
-                    b.Navigation("Invoices");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Equipment", b =>
@@ -879,11 +722,6 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("AssignedWorkOrders");
 
                     b.Navigation("SalesInquiries");
-                });
-
-            modelBuilder.Entity("AgriApp.Core.Entities.Vendor", b =>
-                {
-                    b.Navigation("Equipment");
                 });
 #pragma warning restore 612, 618
         }

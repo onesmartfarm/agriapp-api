@@ -20,8 +20,8 @@ C# 12 / .NET 8 Clean Architecture backend API for managing agricultural equipmen
 AgriApp.sln
 src/
 ├── AgriApp.Core/              # Domain layer (zero dependencies)
-│   ├── Entities/              # Center, User, Equipment, Inquiry, WorkOrder, AuditLog, Attendance, SalaryStructure, CommissionLedger, Invoice, Payment
-│   ├── Enums/                 # Role, WorkStatus, EquipmentCategory, InquiryStatus, AttendanceType, CommissionStatus, InvoiceStatus, PaymentMethod
+│   ├── Entities/              # Center, User, Equipment, Inquiry, WorkOrder, AuditLog, Attendance, SalaryStructure, CommissionLedger
+│   ├── Enums/                 # Role, WorkStatus, EquipmentCategory, InquiryStatus, AttendanceType, CommissionStatus
 │   └── Interfaces/            # ICurrentUser, ICenterScoped, IAuditable
 ├── AgriApp.Infrastructure/    # Data access layer
 │   ├── Data/
@@ -32,9 +32,9 @@ src/
 │   └── Repositories/          # UserRepository, EquipmentRepository, InquiryRepository, WorkOrderRepository
 ├── AgriApp.Application/       # Business logic layer
 │   ├── DTOs/                  # Request/Response DTOs with DataAnnotations
-│   └── Services/              # EquipmentService, InquiryService, WorkOrderService, GstCalculator, CommissionCalculator, CommissionRealizationService, PayrollService, InvoiceService, PaymentService
+│   └── Services/              # EquipmentService, InquiryService, WorkOrderService, GstCalculator, CommissionCalculator, CommissionRealizationService, PayrollService
 └── AgriApp.Api/               # Presentation layer
-    ├── Controllers/           # Auth, Equipment, Inquiries, WorkOrders, Users, Health, Attendance, Payroll, Payment, SalaryStructure, Invoices, Payments
+    ├── Controllers/           # Auth, Equipment, Inquiries, WorkOrders, Users, Health, Attendance, Payroll, Payment, SalaryStructure
     ├── Middleware/             # CurrentUser (ICurrentUser implementation from JWT claims)
     ├── Program.cs             # DI registration, JWT config, EF Core setup, seed data
     └── appsettings.json       # Configuration
@@ -85,40 +85,12 @@ src/
 - `GET /api/salary-structures/{userId}` — Get salary by user
 - `GET /api/payroll/report` — Payroll report (Manager/SuperUser)
 - `POST /api/payment/webhook` — Realize commissions via UPI payment
-- `POST /api/invoices/generate` — Generate Draft invoice from Completed WorkOrder (Manager/SuperUser)
-- `GET /api/invoices` — List invoices (center-filtered)
-- `GET /api/invoices/{id}` — Get invoice by ID
-- `PATCH /api/invoices/{id}/issue` — Transition Draft → Issued (Manager/SuperUser)
-- `POST /api/payments` — Record payment against Issued/PartiallyPaid invoice (Manager/SuperUser)
 - `GET /swagger` — Swagger UI documentation
 - `GET /api/healthz` — Health check
-
-## Blazor WASM Frontend (AgriApp.Web)
-
-`src/AgriApp.Web` — Blazor WASM PWA on port 6000 (MudBlazor, Blazored.LocalStorage, custom JWT auth).
-
-**Pages**: Login, Home, Attendance (Clock In/Out), WorkOrders, Calendar, Equipment, Inquiries, Invoices.
-
-**Services** (all use named HttpClient "AgriApi" → http://localhost:5000):
-- `IAuthService` / `AuthService` — JWT login + state management
-- `IWorkOrderService` / `WorkOrderService` — CRUD
-- `IAttendanceService` / `AttendanceService` — clock in/out + history
-- `IEquipmentService` / `EquipmentService` — CRUD + rental quote (GST + commission)
-- `IInquiryService` / `InquiryService` — CRUD + status update
-- `IInvoiceService` / `InvoiceService` — list/get/generate/issue
-- `IPaymentService` / `PaymentService` — record payment
-
-**Nav roles**: Staff/Sales → Clock In/Out; Sales/Manager/SuperUser → Inquiries; Supervisor+ → WorkOrders & Calendar; Manager/SuperUser → Equipment & Invoices.
 
 ## Workflow
 
 - **AgriApp .NET API**: `cd src/AgriApp.Api && dotnet run` on port 5000
-- **AgriApp Blazor WASM**: `cd src/AgriApp.Web && dotnet run --launch-profile http` on port 6000
-
-## Git Branching Policy
-
-- **`dev`** — all ongoing development; every stage is pushed here
-- **`main`** — stable releases only; do NOT push to main during active development
 
 ## Database
 

@@ -1,53 +1,60 @@
-@using Microsoft.AspNetCore.Components.Authorization
-
 <MudNavMenu>
-    <AuthorizeView>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
+
+    @* Clock In/Out — field staff: Staff, Sales, Supervisor *@
+    <AuthorizeView Roles="Staff,Sales,Supervisor">
         <Authorized>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
-                Home
+            <MudNavLink Href="/attendance" Icon="@Icons.Material.Filled.AccessTime">
+                Clock In / Out
             </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 
-            <AuthorizeView Roles="Staff,Sales,Supervisor" Context="clockCtx">
-                <MudNavLink Href="/attendance" Icon="@Icons.Material.Filled.AccessTime">
-                    Clock In / Out
-                </MudNavLink>
-            </AuthorizeView>
+    @* CRM / Inquiries — sales-facing roles *@
+    <AuthorizeView Roles="Sales,Manager,SuperUser">
+        <Authorized>
+            <MudNavLink Href="/inquiries" Icon="@Icons.Material.Filled.ContactPhone">
+                CRM / Inquiries
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 
-            <AuthorizeView Roles="Sales,Manager,SuperUser" Context="crmCtx">
-                <MudNavLink Href="/inquiries" Icon="@Icons.Material.Filled.People">
-                    CRM / Inquiries
-                </MudNavLink>
-            </AuthorizeView>
+    @* Capacity Calendar — operational / planning roles *@
+    <AuthorizeView Roles="Supervisor,Manager,SuperUser">
+        <Authorized>
+            <MudNavLink Href="/calendar" Icon="@Icons.Material.Filled.CalendarMonth">
+                Capacity Calendar
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 
-            <AuthorizeView Roles="Supervisor,Manager,SuperUser" Context="woCtx">
-                <MudNavLink Href="/workorders" Icon="@Icons.Material.Filled.Assignment">
-                    Work Orders
-                </MudNavLink>
-            </AuthorizeView>
+    @* Work Orders — operational roles *@
+    <AuthorizeView Roles="Supervisor,Manager,SuperUser">
+        <Authorized>
+            <MudNavLink Href="/work-orders" Icon="@Icons.Material.Filled.Build">
+                Work Orders
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 
-            <AuthorizeView Roles="Supervisor,Manager,SuperUser" Context="calCtx">
-                <MudNavLink Href="/calendar" Icon="@Icons.Material.Filled.CalendarMonth">
-                    Capacity Calendar
-                </MudNavLink>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="SuperUser,Manager" Context="eqCtx">
-                <MudNavLink Href="/equipment" Icon="@Icons.Material.Filled.Agriculture">
-                    Equipment
-                </MudNavLink>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="SuperUser,Manager" Context="invCtx">
+    @* Financials & Audit — management only *@
+    <AuthorizeView Roles="Manager,SuperUser">
+        <Authorized>
+            <MudNavGroup Title="Financials & Audit" Icon="@Icons.Material.Filled.AccountBalance" Expanded="false">
                 <MudNavLink Href="/invoices" Icon="@Icons.Material.Filled.Receipt">
                     Invoices
                 </MudNavLink>
-            </AuthorizeView>
-
-            <AuthorizeView Roles="Manager,SuperUser" Context="finCtx">
-                <MudNavLink Href="/financials" Icon="@Icons.Material.Filled.AccountBalance">
-                    Financials &amp; Audit
+                <MudNavLink Href="/payroll" Icon="@Icons.Material.Filled.Payments">
+                    Payroll
                 </MudNavLink>
-            </AuthorizeView>
+            </MudNavGroup>
         </Authorized>
     </AuthorizeView>
+
+    @* Equipment — all logged-in users can view *@
+    <MudNavLink Href="/equipment" Icon="@Icons.Material.Filled.Agriculture">
+        Equipment
+    </MudNavLink>
 </MudNavMenu>

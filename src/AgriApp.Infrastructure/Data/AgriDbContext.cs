@@ -17,8 +17,6 @@ public class AgriDbContext : DbContext
 
     public DbSet<Center> Centers => Set<Center>();
     public DbSet<User> Users => Set<User>();
-    public DbSet<Customer> Customers => Set<Customer>();
-    public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<Equipment> Equipment => Set<Equipment>();
     public DbSet<Inquiry> Inquiries => Set<Inquiry>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
@@ -35,8 +33,6 @@ public class AgriDbContext : DbContext
 
         ConfigureCenter(modelBuilder);
         ConfigureUser(modelBuilder);
-        ConfigureCustomer(modelBuilder);
-        ConfigureVendor(modelBuilder);
         ConfigureEquipment(modelBuilder);
         ConfigureInquiry(modelBuilder);
         ConfigureWorkOrder(modelBuilder);
@@ -57,11 +53,6 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Location).IsRequired().HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-
-            entity.HasOne(e => e.AdminUser)
-                  .WithMany()
-                  .HasForeignKey(e => e.AdminUserId)
-                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 
@@ -85,55 +76,6 @@ public class AgriDbContext : DbContext
         });
     }
 
-    private void ConfigureCustomer(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Customer>(entity =>
-        {
-            entity.ToTable("customers");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Phone).HasMaxLength(20);
-            entity.Property(e => e.Email).HasMaxLength(320);
-            entity.Property(e => e.Address).HasMaxLength(500);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-
-            entity.HasOne(e => e.Center)
-                  .WithMany(c => c.Customers)
-                  .HasForeignKey(e => e.CenterId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasQueryFilter(e =>
-                _currentUser == null ||
-                _currentUser.Role == Role.SuperUser ||
-                e.CenterId == _currentUser.CenterId);
-        });
-    }
-
-    private void ConfigureVendor(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Vendor>(entity =>
-        {
-            entity.ToTable("vendors");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.ContactPerson).HasMaxLength(200);
-            entity.Property(e => e.Phone).HasMaxLength(20);
-            entity.Property(e => e.Email).HasMaxLength(320);
-            entity.Property(e => e.Address).HasMaxLength(500);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-
-            entity.HasOne(e => e.Center)
-                  .WithMany(c => c.Vendors)
-                  .HasForeignKey(e => e.CenterId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasQueryFilter(e =>
-                _currentUser == null ||
-                _currentUser.Role == Role.SuperUser ||
-                e.CenterId == _currentUser.CenterId);
-        });
-    }
-
     private void ConfigureEquipment(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Equipment>(entity =>
@@ -143,18 +85,12 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(300);
             entity.Property(e => e.Category).HasConversion<string>().IsRequired();
             entity.Property(e => e.HourlyRate).HasPrecision(18, 2).IsRequired();
-            entity.Property(e => e.PurchaseCost).HasPrecision(18, 2);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.Center)
                   .WithMany(c => c.Equipment)
                   .HasForeignKey(e => e.CenterId)
                   .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Vendor)
-                  .WithMany(v => v.Equipment)
-                  .HasForeignKey(e => e.VendorId)
-                  .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasQueryFilter(e =>
                 _currentUser == null ||
@@ -173,7 +109,7 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.Customer)
-                  .WithMany(c => c.Inquiries)
+                  .WithMany()
                   .HasForeignKey(e => e.CustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
 
@@ -207,6 +143,7 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.TotalMaterialCost).HasPrecision(18, 2);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
+            // Map ResponsibleUserId to existing 'StaffId' column for backward compatibility
             entity.Property(e => e.ResponsibleUserId).HasColumnName("StaffId").IsRequired();
 
             entity.HasOne(e => e.Equipment)
@@ -229,6 +166,7 @@ public class AgriDbContext : DbContext
                 _currentUser.Role == Role.SuperUser ||
                 e.CenterId == _currentUser.CenterId);
 
+            // Performance indexes for calendar queries
             entity.HasIndex(w => new { w.CenterId, w.ScheduledStartDate, w.ScheduledEndDate })
                   .HasDatabaseName("IX_WorkOrders_CenterId_Schedule");
             entity.HasIndex(w => w.EquipmentId)
@@ -361,13 +299,15 @@ public class AgriDbContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Customer)
-                  .WithMany(c => c.Invoices)
+                  .WithMany()
                   .HasForeignKey(e => e.CustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            // Performance index: list invoices by center + status in one seek
             entity.HasIndex(i => new { i.CenterId, i.Status })
                   .HasDatabaseName("IX_Invoices_CenterId_Status");
 
+            // One invoice per work order
             entity.HasIndex(i => i.WorkOrderId)
                   .IsUnique()
                   .HasDatabaseName("IX_Invoices_WorkOrderId_Unique");
@@ -396,6 +336,7 @@ public class AgriDbContext : DbContext
                   .HasForeignKey(e => e.InvoiceId)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            // Unique constraint prevents duplicate UPI/bank transaction IDs
             entity.HasIndex(p => p.TransactionReference)
                   .IsUnique()
                   .HasDatabaseName("IX_Payments_TransactionReference_Unique");

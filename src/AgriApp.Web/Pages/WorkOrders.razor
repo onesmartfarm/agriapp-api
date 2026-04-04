@@ -4,7 +4,6 @@
 @using AgriApp.Web.Services
 @inject IWorkOrderService WorkOrderService
 @inject IDialogService DialogService
-@inject ISnackbar Snackbar
 
 <AuthorizeView Roles="Supervisor,Manager,SuperUser">
     <Authorized>
@@ -78,7 +77,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);
+            Console.WriteLine($"Error loading work orders: {ex.Message}");
         }
         finally
         {
@@ -129,23 +128,8 @@
 
         if (confirmed == true)
         {
-            try
-            {
-                var (success, error) = await WorkOrderService.DeleteAsync(id);
-                if (success)
-                {
-                    Snackbar.Add("Work order deleted.", Severity.Success);
-                    await LoadWorkOrders();
-                }
-                else
-                {
-                    Snackbar.Add(error ?? "Failed to delete work order.", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add(ex.Message, Severity.Error);
-            }
+            // TODO: Implement delete via WorkOrderService
+            await LoadWorkOrders();
         }
     }
 

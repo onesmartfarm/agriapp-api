@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11620.152 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ECE939F8-942D-417F-B922-E0A26B9595EE}"
 EndProject
@@ -13,15 +13,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriApp.Application", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriApp.Api", "src\AgriApp.Api\AgriApp.Api.csproj", "{C451F52F-E5FB-4FCD-8C3F-27CB7F6A0310}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriApp.Web", "src\AgriApp.Web\AgriApp.Web.csproj", "{39E8FF32-F5B9-4D32-9D6E-2418A4B9309F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriApp.Web", "src\AgriApp.Web\AgriApp.Web.csproj", "{E48E87AF-1A97-4CA8-A400-A9585041A0DB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriApp.Application.Tests", "tests\AgriApp.Application.Tests\AgriApp.Application.Tests.csproj", "{9369C330-629A-025A-A159-DA7DCCE98866}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A99E7137-725E-4650-B7D0-3F303085A545}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{1AD0A59E-A6AF-4C3D-9962-E3925471977C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -40,16 +41,24 @@ Global
 		{C451F52F-E5FB-4FCD-8C3F-27CB7F6A0310}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C451F52F-E5FB-4FCD-8C3F-27CB7F6A0310}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C451F52F-E5FB-4FCD-8C3F-27CB7F6A0310}.Release|Any CPU.Build.0 = Release|Any CPU
-		{39E8FF32-F5B9-4D32-9D6E-2418A4B9309F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{39E8FF32-F5B9-4D32-9D6E-2418A4B9309F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{39E8FF32-F5B9-4D32-9D6E-2418A4B9309F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{39E8FF32-F5B9-4D32-9D6E-2418A4B9309F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E48E87AF-1A97-4CA8-A400-A9585041A0DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E48E87AF-1A97-4CA8-A400-A9585041A0DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E48E87AF-1A97-4CA8-A400-A9585041A0DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E48E87AF-1A97-4CA8-A400-A9585041A0DB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9369C330-629A-025A-A159-DA7DCCE98866}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9369C330-629A-025A-A159-DA7DCCE98866}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9369C330-629A-025A-A159-DA7DCCE98866}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9369C330-629A-025A-A159-DA7DCCE98866}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1AD0A59E-A6AF-4C3D-9962-E3925471977C} = {ECE939F8-942D-417F-B922-E0A26B9595EE}
 		{6FEC4575-B2EB-4CF9-979A-B7CC8A973126} = {ECE939F8-942D-417F-B922-E0A26B9595EE}
 		{14F9EF94-24C2-45F1-9B4C-2A1E16C9EEB9} = {ECE939F8-942D-417F-B922-E0A26B9595EE}
 		{C451F52F-E5FB-4FCD-8C3F-27CB7F6A0310} = {ECE939F8-942D-417F-B922-E0A26B9595EE}
-		{39E8FF32-F5B9-4D32-9D6E-2418A4B9309F} = {ECE939F8-942D-417F-B922-E0A26B9595EE}
+		{E48E87AF-1A97-4CA8-A400-A9585041A0DB} = {ECE939F8-942D-417F-B922-E0A26B9595EE}
+		{9369C330-629A-025A-A159-DA7DCCE98866} = {A99E7137-725E-4650-B7D0-3F303085A545}
 	EndGlobalSection
 EndGlobal
