@@ -3,6 +3,7 @@ using System;
 using AgriApp.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AgriApp.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AgriDbContext))]
-    partial class AgriDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260404052545_Stage7_6_WorkOrderCustomerLink")]
+    partial class Stage7_6_WorkOrderCustomerLink
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

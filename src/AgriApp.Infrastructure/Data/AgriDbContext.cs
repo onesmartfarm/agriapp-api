@@ -216,6 +216,11 @@ public class AgriDbContext : DbContext
                   .HasForeignKey(e => e.EquipmentId)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(e => e.Customer)
+                  .WithMany(c => c.WorkOrders)
+                  .HasForeignKey(e => e.CustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasOne(e => e.ResponsibleUser)
                   .WithMany(u => u.AssignedWorkOrders)
                   .HasForeignKey(e => e.ResponsibleUserId)
@@ -237,6 +242,7 @@ public class AgriDbContext : DbContext
                   .HasDatabaseName("IX_WorkOrders_EquipmentId");
             entity.HasIndex(w => w.ResponsibleUserId)
                   .HasDatabaseName("IX_WorkOrders_ResponsibleUserId");
+            entity.HasIndex(w => w.CustomerId);
         });
     }
 

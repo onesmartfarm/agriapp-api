@@ -276,6 +276,7 @@ public record WorkOrderTimeLog(
 public record WorkOrderDetail(
     int Id,
     int CenterId,
+    int? CustomerId,
     int? InquiryId,
     int? EquipmentId,
     int ResponsibleUserId,
@@ -323,6 +324,8 @@ public record WorkOrderTimeLogRequest(
     DateTime EndTime,
     string LogType,
     string? Notes);
+
+public record WorkOrderPatchRequest(int? CustomerId);
 
 public record WorkOrderStatusUpdateRequest
 {

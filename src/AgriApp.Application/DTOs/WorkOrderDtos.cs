@@ -27,6 +27,8 @@ public class CreateWorkOrderRequest
 
     public int? InquiryId { get; set; }
 
+    public int? CustomerId { get; set; }
+
     public int? CenterId { get; set; }
 
     [Required]
@@ -47,6 +49,12 @@ public class CreateWorkOrderRequest
     public List<CreateWorkOrderTimeLogDto>? TimeLogs { get; set; }
 }
 
+public class UpdateWorkOrderRequest
+{
+    /// <summary>Optional link to a customer in the same center; null clears the link.</summary>
+    public int? CustomerId { get; set; }
+}
+
 public class UpdateWorkOrderStatusRequest
 {
     [Required]
@@ -57,6 +65,7 @@ public class WorkOrderResponse
 {
     public int Id { get; set; }
     public int CenterId { get; set; }
+    public int? CustomerId { get; set; }
     public int? InquiryId { get; set; }
     public int? EquipmentId { get; set; }
     public int ResponsibleUserId { get; set; }

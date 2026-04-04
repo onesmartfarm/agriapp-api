@@ -50,6 +50,7 @@ public class WorkOrderService : IWorkOrderService
                 request.ResponsibleUserId,
                 request.EquipmentId,
                 request.InquiryId,
+                request.CustomerId,
                 request.CenterId,
                 request.Description,
                 request.Type,
@@ -79,6 +80,29 @@ public class WorkOrderService : IWorkOrderService
         {
             _logger.LogError(ex, "Exception creating work order");
             return (false, "An unexpected error occurred while creating the work order.", null);
+        }
+    }
+
+    public async Task<(bool Success, string? Error, WorkOrderDetail? WorkOrder)> UpdateAsync(int id, WorkOrderPatchRequest request)
+    {
+        try
+        {
+            var response = await _http.PatchAsJsonAsync($"api/workorders/{id}", new { request.CustomerId });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var wo = await response.Content.ReadFromJsonAsync<WorkOrderDetail>();
+                return (true, null, wo);
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Update work order {Id} failed: {Error}", id, error);
+            return (false, error, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception updating work order {Id}", id);
+            return (false, "An unexpected error occurred while updating the work order.", null);
         }
     }
 

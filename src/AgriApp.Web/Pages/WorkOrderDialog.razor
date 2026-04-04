@@ -194,6 +194,19 @@
                         }
                     </MudSelect>
 
+                    <MudSelect T="int?" @bind-Value="_form.CustomerId"
+                               Label="Customer (optional)"
+                               FullWidth="true"
+                               Disabled="_loadingLookups">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                        @foreach (var c in _customerList)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)c.Id)">
+                                @c.Name @(c.Phone != null ? $"({c.Phone})" : "")
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
                     <ValidationSummary />
                     @if (!string.IsNullOrEmpty(_error))
                     {
@@ -301,7 +314,10 @@
         {
             _detail = await WorkOrderService.GetByIdAsync(WorkOrderId);
             if (_detail != null)
+            {
                 _statusForm.Status = _detail.Status;
+                _form.CustomerId = _detail.CustomerId;
+            }
         }
     }
 
@@ -371,10 +387,20 @@
         _error = null;
         try
         {
+            var (patchOk, patchErr, _) = await WorkOrderService.UpdateAsync(
+                WorkOrderId,
+                new WorkOrderPatchRequest(_form.CustomerId));
+            if (!patchOk)
+            {
+                _error = patchErr;
+                Snackbar.Add(patchErr ?? "Failed to update work order customer.", Severity.Error);
+                return;
+            }
+
             var (success, error, _) = await WorkOrderService.UpdateStatusAsync(WorkOrderId, _statusForm.Status);
             if (success)
             {
-                Snackbar.Add("Work order status updated.", Severity.Success);
+                Snackbar.Add("Work order updated.", Severity.Success);
                 if (MudDialog != null) MudDialog.Close();
             }
             else

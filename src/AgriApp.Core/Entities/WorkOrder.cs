@@ -7,6 +7,7 @@ public class WorkOrder : ICenterScoped, IAuditable
 {
     public int Id { get; set; }
     public int CenterId { get; set; }
+    public int? CustomerId { get; set; }
     public int? InquiryId { get; set; }
     public int? EquipmentId { get; set; }
 
@@ -29,6 +30,7 @@ public class WorkOrder : ICenterScoped, IAuditable
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
+    public virtual Customer? Customer { get; set; }
     public Equipment? Equipment { get; set; }
     public User ResponsibleUser { get; set; } = null!;
     public Inquiry? Inquiry { get; set; }

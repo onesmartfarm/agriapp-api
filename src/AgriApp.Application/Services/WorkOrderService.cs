@@ -42,9 +42,12 @@ public class WorkOrderService
             request.ScheduledEndDate,
             excludeId: null);
 
+        await ValidateCustomerForCenterAsync(request.CustomerId, centerId);
+
         var workOrder = new WorkOrder
         {
             CenterId = centerId,
+            CustomerId = request.CustomerId,
             InquiryId = request.InquiryId,
             EquipmentId = request.EquipmentId,
             ResponsibleUserId = request.ResponsibleUserId,
@@ -87,6 +90,20 @@ public class WorkOrderService
         return MapToResponse(workOrder);
     }
 
+    public async Task<WorkOrderResponse?> UpdateWorkOrderAsync(int id, UpdateWorkOrderRequest request)
+    {
+        var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
+        if (workOrder == null) return null;
+
+        await ValidateCustomerForCenterAsync(request.CustomerId, workOrder.CenterId);
+
+        workOrder.CustomerId = request.CustomerId;
+        workOrder.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return MapToResponse(workOrder);
+    }
+
     public async Task<bool> DeleteAsync(int id)
     {
         // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
@@ -114,6 +131,16 @@ public class WorkOrderService
         await _db.SaveChangesAsync();
 
         return MapToResponse(workOrder);
+    }
+
+    private async Task ValidateCustomerForCenterAsync(int? customerId, int centerId)
+    {
+        if (!customerId.HasValue) return;
+
+        var ok = await _db.Customers.AsNoTracking()
+            .AnyAsync(c => c.Id == customerId.Value && c.CenterId == centerId);
+        if (!ok)
+            throw new ArgumentException("Customer not found or does not belong to this center.");
     }
 
     private async Task EnforceDoubleBookingFirewall(
@@ -155,6 +182,7 @@ public class WorkOrderService
     {
         Id = w.Id,
         CenterId = w.CenterId,
+        CustomerId = w.CustomerId,
         InquiryId = w.InquiryId,
         EquipmentId = w.EquipmentId,
         ResponsibleUserId = w.ResponsibleUserId,
