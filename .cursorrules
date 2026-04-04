@@ -1,0 +1,36 @@
+# AgriApp — AI / Cursor Constitution
+
+## Project identity
+
+This is a **.NET 8 Clean Architecture** solution. Layers include **AgriApp.Core**, **AgriApp.Application**, **AgriApp.Infrastructure**, **AgriApp.Api**, and **AgriApp.Web**. The frontend is **Blazor WebAssembly** (`AgriApp.Web`) using **MudBlazor**.
+
+## No frontend entity duplication
+
+The **Web** project **MUST NOT** recreate database entities or duplicate domain models that belong in Core. The frontend must strictly reference **`AgriApp.Core.Entities`** and **`AgriApp.Core.Enums`** (via project reference) instead of inventing parallel entity types.
+
+## Frontend DTOs (request/response)
+
+Any new **Request/Response** (or similar view-facing) models needed by the frontend **MUST** be added as **`record`** types in:
+
+`src/AgriApp.Web/Services/ViewModels.cs`
+
+Do **not** create a separate `Models` folder for these DTOs.
+
+## API clients
+
+- All HTTP calls from **AgriApp.Web** must go through **service interfaces** under **`AgriApp.Web.Services`** (implementations in the same area).
+- Use the **named `HttpClient` `"AgriApi"`** (registered in `Program.cs` / `IHttpClientFactory`).
+- **Wrap HTTP calls in `try`/`catch`**, log failures with **`ILogger`**, and surface user-facing errors appropriately (see global exception shield below).
+
+## Blazor UI / UX rules
+
+- Every **`<MudButton>`** used for **Cancel** or **Close** **MUST** include **`ButtonType="ButtonType.Button"`** so it does not accidentally submit a parent form.
+- If a bound field is a **foreign key** (e.g. `CenterId`, `CustomerId`), **do not** use a plain text box for that id. **Inject** the related service, **load options in `OnInitializedAsync`**, and bind with **`<MudSelect>`** showing the **human-readable name** (and backing value = id).
+
+## Global exception shield
+
+In UI components, when API calls fail, use **`ISnackbar`** with **`Severity.Error`** (and clear messages) so backend/API errors are shown **gracefully** without raw exceptions dumped to the user.
+
+## Scope reminder
+
+Respect **Clean Architecture** boundaries: domain in **Core**, use cases in **Application**, persistence/external services in **Infrastructure**, HTTP API in **Api**, presentation in **Web**.
