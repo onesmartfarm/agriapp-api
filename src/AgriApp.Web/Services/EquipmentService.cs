@@ -1,15 +1,18 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace AgriApp.Web.Services;
 
 public class EquipmentService : IEquipmentService
 {
     private readonly HttpClient _http;
+    private readonly ILogger<EquipmentService> _logger;
 
-    public EquipmentService(HttpClient http)
+    public EquipmentService(HttpClient http, ILogger<EquipmentService> logger)
     {
         _http = http;
+        _logger = logger;
     }
 
     public async Task<List<EquipmentResponse>> GetAllAsync()
@@ -19,9 +22,10 @@ public class EquipmentService : IEquipmentService
             return await _http.GetFromJsonAsync<List<EquipmentResponse>>("api/equipment")
                    ?? new List<EquipmentResponse>();
         }
-        catch
+        catch (Exception ex)
         {
-            return new List<EquipmentResponse>();
+            _logger.LogError(ex, "Failed to load equipment list");
+            throw new ApplicationException("Could not load equipment. Please try again.", ex);
         }
     }
 
@@ -31,8 +35,9 @@ public class EquipmentService : IEquipmentService
         {
             return await _http.GetFromJsonAsync<EquipmentResponse>($"api/equipment/{id}");
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to load equipment {Id}", id);
             return null;
         }
     }
@@ -56,11 +61,13 @@ public class EquipmentService : IEquipmentService
             }
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Create equipment failed: {Error}", error);
             return (false, error, null);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception creating equipment");
+            return (false, "An unexpected error occurred while creating equipment.", null);
         }
     }
 
@@ -82,11 +89,13 @@ public class EquipmentService : IEquipmentService
             }
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Update equipment {Id} failed: {Error}", id, error);
             return (false, error, null);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception updating equipment {Id}", id);
+            return (false, "An unexpected error occurred while updating equipment.", null);
         }
     }
 
@@ -99,11 +108,13 @@ public class EquipmentService : IEquipmentService
                 return (true, null);
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Delete equipment {Id} failed: {Error}", id, error);
             return (false, error);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message);
+            _logger.LogError(ex, "Exception deleting equipment {Id}", id);
+            return (false, "An unexpected error occurred while deleting equipment.");
         }
     }
 
@@ -116,6 +127,7 @@ public class EquipmentService : IEquipmentService
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("Quote for equipment {Id} failed: {Error}", id, error);
                 return (false, error, null);
             }
 
@@ -146,7 +158,8 @@ public class EquipmentService : IEquipmentService
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception getting quote for equipment {Id}", id);
+            return (false, "An unexpected error occurred while calculating the quote.", null);
         }
     }
 }

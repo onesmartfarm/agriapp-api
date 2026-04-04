@@ -84,6 +84,10 @@
         {
             _equipment = await EquipmentService.GetAllAsync();
         }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
         finally
         {
             _loading = false;

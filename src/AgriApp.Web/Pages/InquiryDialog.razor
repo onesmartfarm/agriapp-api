@@ -1,6 +1,7 @@
 @using AgriApp.Web.Services
 @inject IInquiryService InquiryService
 @inject IEquipmentService EquipmentService
+@inject IUserService UserService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -10,27 +11,43 @@
             <EditForm id="inqCreateForm" Model="_createForm" OnValidSubmit="SaveCreate">
                 <DataAnnotationsValidator />
                 <MudStack Spacing="3">
-                    <MudNumericField @bind-Value="_createForm.CustomerId" Label="Customer ID"
-                                     FullWidth="true" For="@(() => _createForm.CustomerId)"
-                                     HelperText="Enter the customer's numeric ID" />
 
-                    <MudSelect T="int" @bind-Value="_createForm.EquipmentId" Label="Equipment"
-                               FullWidth="true" For="@(() => _createForm.EquipmentId)"
-                               Disabled="_loadingEquipment">
+                    <MudNumericField @bind-Value="_createForm.CustomerId"
+                                     Label="Customer ID"
+                                     FullWidth="true"
+                                     For="@(() => _createForm.CustomerId)"
+                                     HelperText="Numeric ID of the customer" />
+
+                    <MudSelect T="int" @bind-Value="_createForm.EquipmentId"
+                               Label="Equipment"
+                               FullWidth="true"
+                               Disabled="_loadingLookups"
+                               For="@(() => _createForm.EquipmentId)">
                         <MudSelectItem T="int" Value="0">— Select Equipment —</MudSelectItem>
                         @foreach (var eq in _equipmentList)
                         {
                             <MudSelectItem T="int" Value="@eq.Id">
-                                @eq.Name (@eq.Category) — ₹@eq.HourlyRate.ToString("N0")/hr
+                                @eq.Name (@eq.Category · ₹@eq.HourlyRate.ToString("N0")/hr)
                             </MudSelectItem>
                         }
                     </MudSelect>
 
-                    <MudNumericField @bind-Value="_createForm.SalespersonId" Label="Salesperson User ID"
-                                     FullWidth="true" For="@(() => _createForm.SalespersonId)"
-                                     HelperText="Enter the salesperson's numeric user ID" />
+                    <MudSelect T="int" @bind-Value="_createForm.SalespersonId"
+                               Label="Salesperson"
+                               FullWidth="true"
+                               Disabled="_loadingLookups"
+                               For="@(() => _createForm.SalespersonId)">
+                        <MudSelectItem T="int" Value="0">— Select Salesperson —</MudSelectItem>
+                        @foreach (var u in _salesList)
+                        {
+                            <MudSelectItem T="int" Value="@u.Id">
+                                @u.Name (@u.Role)
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
-                    <MudNumericField @bind-Value="_createForm.CenterId" Label="Center ID (optional)"
+                    <MudNumericField @bind-Value="_createForm.CenterId"
+                                     Label="Center ID (optional)"
                                      FullWidth="true" />
 
                     <ValidationSummary />
@@ -100,8 +117,9 @@
     private CreateInquiryRequest _createForm = new();
     private UpdateInquiryStatusRequest _statusForm = new();
     private List<EquipmentResponse> _equipmentList = new();
+    private List<UserResponse> _salesList = new();
     private bool _saving = false;
-    private bool _loadingEquipment = false;
+    private bool _loadingLookups = false;
     private string? _error;
 
     protected override void OnParametersSet()
@@ -111,17 +129,26 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (IsCreate)
+        if (!IsCreate) return;
+
+        _loadingLookups = true;
+        try
         {
-            _loadingEquipment = true;
-            try
-            {
-                _equipmentList = await EquipmentService.GetAllAsync();
-            }
-            finally
-            {
-                _loadingEquipment = false;
-            }
+            var eqTask = EquipmentService.GetAllAsync();
+            var userTask = UserService.GetAllAsync();
+            await Task.WhenAll(eqTask, userTask);
+            _equipmentList = eqTask.Result;
+            _salesList = userTask.Result
+                .Where(u => u.Role is "Sales" or "Manager" or "SuperUser")
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load lookup data: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            _loadingLookups = false;
         }
     }
 
@@ -140,6 +167,7 @@
             else
             {
                 _error = error;
+                Snackbar.Add(error ?? "Failed to create inquiry.", Severity.Error);
             }
         }
         finally
@@ -163,6 +191,7 @@
             else
             {
                 _error = error;
+                Snackbar.Add(error ?? "Failed to update status.", Severity.Error);
             }
         }
         finally

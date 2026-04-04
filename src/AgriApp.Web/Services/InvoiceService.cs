@@ -1,14 +1,17 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace AgriApp.Web.Services;
 
 public class InvoiceService : IInvoiceService
 {
     private readonly HttpClient _http;
+    private readonly ILogger<InvoiceService> _logger;
 
-    public InvoiceService(HttpClient http)
+    public InvoiceService(HttpClient http, ILogger<InvoiceService> logger)
     {
         _http = http;
+        _logger = logger;
     }
 
     public async Task<List<InvoiceResponse>> GetAllAsync()
@@ -18,9 +21,10 @@ public class InvoiceService : IInvoiceService
             return await _http.GetFromJsonAsync<List<InvoiceResponse>>("api/invoices")
                    ?? new List<InvoiceResponse>();
         }
-        catch
+        catch (Exception ex)
         {
-            return new List<InvoiceResponse>();
+            _logger.LogError(ex, "Failed to load invoices");
+            throw new ApplicationException("Could not load invoices. Please try again.", ex);
         }
     }
 
@@ -30,8 +34,9 @@ public class InvoiceService : IInvoiceService
         {
             return await _http.GetFromJsonAsync<InvoiceResponse>($"api/invoices/{id}");
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to load invoice {Id}", id);
             return null;
         }
     }
@@ -56,11 +61,13 @@ public class InvoiceService : IInvoiceService
             }
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Generate invoice failed: {Error}", error);
             return (false, error, null);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception generating invoice");
+            return (false, "An unexpected error occurred while generating the invoice.", null);
         }
     }
 
@@ -77,11 +84,13 @@ public class InvoiceService : IInvoiceService
             }
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Issue invoice {Id} failed: {Error}", id, error);
             return (false, error, null);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception issuing invoice {Id}", id);
+            return (false, "An unexpected error occurred while issuing the invoice.", null);
         }
     }
 }

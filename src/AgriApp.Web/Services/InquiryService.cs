@@ -1,14 +1,17 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace AgriApp.Web.Services;
 
 public class InquiryService : IInquiryService
 {
     private readonly HttpClient _http;
+    private readonly ILogger<InquiryService> _logger;
 
-    public InquiryService(HttpClient http)
+    public InquiryService(HttpClient http, ILogger<InquiryService> logger)
     {
         _http = http;
+        _logger = logger;
     }
 
     public async Task<List<InquiryResponse>> GetAllAsync()
@@ -18,9 +21,10 @@ public class InquiryService : IInquiryService
             return await _http.GetFromJsonAsync<List<InquiryResponse>>("api/inquiries")
                    ?? new List<InquiryResponse>();
         }
-        catch
+        catch (Exception ex)
         {
-            return new List<InquiryResponse>();
+            _logger.LogError(ex, "Failed to load inquiries");
+            throw new ApplicationException("Could not load inquiries. Please try again.", ex);
         }
     }
 
@@ -30,8 +34,9 @@ public class InquiryService : IInquiryService
         {
             return await _http.GetFromJsonAsync<InquiryResponse>($"api/inquiries/{id}");
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to load inquiry {Id}", id);
             return null;
         }
     }
@@ -55,11 +60,13 @@ public class InquiryService : IInquiryService
             }
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Create inquiry failed: {Error}", error);
             return (false, error, null);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception creating inquiry");
+            return (false, "An unexpected error occurred while creating the inquiry.", null);
         }
     }
 
@@ -76,11 +83,13 @@ public class InquiryService : IInquiryService
             }
 
             var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Update inquiry {Id} status failed: {Error}", id, error);
             return (false, error, null);
         }
         catch (Exception ex)
         {
-            return (false, ex.Message, null);
+            _logger.LogError(ex, "Exception updating inquiry {Id} status", id);
+            return (false, "An unexpected error occurred while updating the inquiry.", null);
         }
     }
 }

@@ -2,6 +2,7 @@
 @using AgriApp.Web.Services
 @inject IWorkOrderService WorkOrderService
 @inject IEquipmentService EquipmentService
+@inject IUserService UserService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -11,6 +12,10 @@
             <EditForm id="woCreateForm" Model="_form" OnValidSubmit="SaveCreate">
                 <DataAnnotationsValidator />
                 <MudStack Spacing="3">
+
+                    @* ── Basic info ─────────────────────────────────────────── *@
+                    <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Work Order Details</MudText>
+
                     <MudTextField @bind-Value="_form.Description" Label="Description"
                                   Lines="2" FullWidth="true"
                                   For="@(() => _form.Description)" />
@@ -22,30 +27,133 @@
                         }
                     </MudSelect>
 
+                    @* ── Relational dropdowns ───────────────────────────────── *@
                     <MudSelect T="int?" @bind-Value="_form.EquipmentId" Label="Equipment (optional)"
-                               FullWidth="true" Disabled="_loadingEquipment">
+                               FullWidth="true" Disabled="_loadingLookups">
                         <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
                         @foreach (var eq in _equipmentList)
                         {
                             <MudSelectItem T="int?" Value="@((int?)eq.Id)">
-                                @eq.Name (@eq.Category) — ₹@eq.HourlyRate.ToString("N0")/hr
+                                @eq.Name (@eq.Category · ₹@eq.HourlyRate.ToString("N0")/hr)
                             </MudSelectItem>
                         }
                     </MudSelect>
 
-                    <MudNumericField @bind-Value="_form.ResponsibleUserId"
-                                     Label="Responsible User ID"
-                                     FullWidth="true"
-                                     For="@(() => _form.ResponsibleUserId)" />
+                    <MudSelect T="int" @bind-Value="_form.ResponsibleUserId"
+                               Label="Responsible Staff / Supervisor"
+                               FullWidth="true" Disabled="_loadingLookups"
+                               For="@(() => _form.ResponsibleUserId)">
+                        <MudSelectItem T="int" Value="0">— Select User —</MudSelectItem>
+                        @foreach (var u in _staffList)
+                        {
+                            <MudSelectItem T="int" Value="@u.Id">
+                                @u.Name (@u.Role)
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
-                    <MudDatePicker @bind-Date="_startDate" Label="Scheduled Start Date" />
-                    <MudTimePicker @bind-Time="_startTime" Label="Start Time" />
+                    <MudSelect T="int?" @bind-Value="_form.CustomerId"
+                               Label="Customer (optional)"
+                               FullWidth="true" Disabled="_loadingLookups">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                        @foreach (var u in _allUsers)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)u.Id)">
+                                @u.Name (@u.Role)
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
-                    <MudDatePicker @bind-Date="_endDate" Label="Scheduled End Date" />
-                    <MudTimePicker @bind-Time="_endTime" Label="End Time" />
+                    @* ── Visual Billing Timeline ────────────────────────────── *@
+                    <MudDivider />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.subtitle2">Work Timeline Spans</MudText>
+                        <MudButton ButtonType="ButtonType.Button" Size="Size.Small"
+                                   Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddSpan">Add Span</MudButton>
+                    </MudStack>
+
+                    @for (int i = 0; i < _spans.Count; i++)
+                    {
+                        var idx = i;
+                        var span = _spans[idx];
+                        <MudPaper Elevation="1" Class="pa-2">
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudSelect T="string" @bind-Value="span.Type" Label="Type"
+                                               Style="min-width:140px">
+                                        <MudSelectItem Value='"Working"'>
+                                            <span style="color:#4caf50">● Working</span>
+                                        </MudSelectItem>
+                                        <MudSelectItem Value='"Break"'>
+                                            <span style="color:#ff9800">● Break</span>
+                                        </MudSelectItem>
+                                        <MudSelectItem Value='"Breakdown"'>
+                                            <span style="color:#f44336">● Breakdown</span>
+                                        </MudSelectItem>
+                                    </MudSelect>
+                                    <MudDatePicker @bind-Date="span.Date" Label="Date" />
+                                    <MudTimePicker @bind-Time="span.Start" Label="Start" />
+                                    <MudTimePicker @bind-Time="span.End" Label="End" />
+                                    <MudIconButton ButtonType="ButtonType.Button"
+                                                   Icon="@Icons.Material.Filled.Remove"
+                                                   Color="Color.Error" Size="Size.Small"
+                                                   title="Remove span"
+                                                   OnClick="() => RemoveSpan(idx)"
+                                                   Disabled="_spans.Count <= 1" />
+                                </MudStack>
+                                <MudTextField @bind-Value="span.Notes" Label="Notes (optional)"
+                                              FullWidth="true" />
+                            </MudStack>
+                        </MudPaper>
+                    }
+
+                    @* ── Billing Summary Bar ────────────────────────────────── *@
+                    @{
+                        var selectedEq = _equipmentList.FirstOrDefault(e => e.Id == _form.EquipmentId);
+                        var billableHrs = _spans.Where(s => s.IsBillable).Sum(s => s.Hours);
+                        var nonBillHrs = _spans.Where(s => !s.IsBillable).Sum(s => s.Hours);
+                        var calculatedAmt = selectedEq != null
+                            ? (decimal)billableHrs * selectedEq.HourlyRate : 0m;
+                    }
+                    <MudPaper Elevation="2" Class="pa-3" Style="background-color: #f5f5f5">
+                        <MudText Typo="Typo.subtitle2">Billing Summary</MudText>
+                        <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap">
+                            <MudText>
+                                <span style="color:#4caf50; font-weight:600">
+                                    @billableHrs.ToString("N1") h
+                                </span>
+                                <span class="mud-text-secondary"> billable</span>
+                            </MudText>
+                            <MudText>
+                                <span style="color:#9e9e9e; font-weight:600">
+                                    @nonBillHrs.ToString("N1") h
+                                </span>
+                                <span class="mud-text-secondary"> non-billable</span>
+                            </MudText>
+                            @if (selectedEq != null && calculatedAmt > 0)
+                            {
+                                <MudText>
+                                    <span style="color:#1976d2; font-weight:600">
+                                        ≈ ₹@calculatedAmt.ToString("N2")
+                                    </span>
+                                    <span class="mud-text-secondary">
+                                        (@billableHrs.ToString("N1") h × ₹@selectedEq.HourlyRate.ToString("N0")/hr)
+                                    </span>
+                                </MudText>
+                            }
+                            else if (selectedEq == null && billableHrs > 0)
+                            {
+                                <MudText Class="mud-text-secondary">
+                                    Select equipment to calculate amount
+                                </MudText>
+                            }
+                        </MudStack>
+                    </MudPaper>
 
                     <MudNumericField @bind-Value="_form.TotalMaterialCost"
-                                     Label="Total Material Cost (₹)"
+                                     Label="Total Material Cost — ₹ (auto-filled from spans, editable)"
                                      Format="N2" FullWidth="true"
                                      For="@(() => _form.TotalMaterialCost)" />
 
@@ -64,15 +172,19 @@
                 <MudStack Spacing="3">
                     @if (_detail != null)
                     {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                            <b>@_detail.Description</b><br />
-                            @_detail.Type · @_detail.ScheduledStartDate.ToString("yyyy-MM-dd HH:mm") →
-                            @_detail.ScheduledEndDate.ToString("yyyy-MM-dd HH:mm")
-                        </MudText>
+                        <MudPaper Elevation="0" Class="pa-2" Style="background-color: #f9f9f9; border-radius:4px;">
+                            <MudText Typo="Typo.body2"><b>@_detail.Description</b></MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                @_detail.Type ·
+                                @_detail.ScheduledStartDate.ToString("yyyy-MM-dd HH:mm") →
+                                @_detail.ScheduledEndDate.ToString("yyyy-MM-dd HH:mm")
+                                · ₹@_detail.TotalMaterialCost.ToString("N2")
+                            </MudText>
+                        </MudPaper>
                         <MudDivider />
                     }
 
-                    <MudSelect @bind-Value="_statusForm.Status" Label="New Status" FullWidth="true">
+                    <MudSelect @bind-Value="_statusForm.Status" Label="Update Status" FullWidth="true">
                         @foreach (var s in Enum.GetValues(typeof(WorkStatus)).Cast<WorkStatus>())
                         {
                             <MudSelectItem Value="@s.ToString()">@s</MudSelectItem>
@@ -121,36 +233,75 @@
     private WorkOrderFormRequest _form = new();
     private WorkOrderStatusUpdateRequest _statusForm = new();
     private WorkOrderDetail? _detail;
+
     private List<EquipmentResponse> _equipmentList = new();
+    private List<UserResponse> _staffList = new();
+    private List<UserResponse> _allUsers = new();
+
     private bool _saving = false;
-    private bool _loadingEquipment = false;
+    private bool _loadingLookups = false;
     private string? _error;
 
-    private DateTime? _startDate = DateTime.Today;
-    private TimeSpan? _startTime = TimeSpan.FromHours(8);
-    private DateTime? _endDate = DateTime.Today.AddDays(1);
-    private TimeSpan? _endTime = TimeSpan.FromHours(17);
+    private List<SpanEntry> _spans = new() { new SpanEntry() };
+
+    // ── Local span model ──────────────────────────────────────────────────────
+    private class SpanEntry
+    {
+        public string Type { get; set; } = "Working";
+        public DateTime? Date { get; set; } = DateTime.Today;
+        public TimeSpan? Start { get; set; } = TimeSpan.FromHours(8);
+        public TimeSpan? End { get; set; } = TimeSpan.FromHours(17);
+        public string Notes { get; set; } = string.Empty;
+
+        public double Hours =>
+            (Date.HasValue && Start.HasValue && End.HasValue && End > Start)
+                ? (End.Value - Start.Value).TotalHours : 0;
+
+        public bool IsBillable => Type == "Working";
+
+        public DateTime? StartDateTime =>
+            Date.HasValue && Start.HasValue ? Date.Value.Date + Start.Value : null;
+        public DateTime? EndDateTime =>
+            Date.HasValue && End.HasValue ? Date.Value.Date + End.Value : null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        _loadingEquipment = true;
+        _loadingLookups = true;
         try
         {
-            _equipmentList = await EquipmentService.GetAllAsync();
+            var equipTask = EquipmentService.GetAllAsync();
+            var userTask = UserService.GetAllAsync();
+            await Task.WhenAll(equipTask, userTask);
+            _equipmentList = equipTask.Result;
+            _allUsers = userTask.Result;
+            _staffList = _allUsers
+                .Where(u => u.Role is "Staff" or "Supervisor" or "Manager" or "SuperUser")
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load lookup data: {ex.Message}", Severity.Warning);
         }
         finally
         {
-            _loadingEquipment = false;
+            _loadingLookups = false;
         }
 
         if (!IsCreate && WorkOrderId > 0)
         {
             _detail = await WorkOrderService.GetByIdAsync(WorkOrderId);
             if (_detail != null)
-            {
                 _statusForm.Status = _detail.Status;
-            }
         }
+    }
+
+    private void AddSpan() => _spans.Add(new SpanEntry { Date = DateTime.Today });
+
+    private void RemoveSpan(int index)
+    {
+        if (_spans.Count > 1)
+            _spans.RemoveAt(index);
     }
 
     private async Task SaveCreate()
@@ -158,8 +309,29 @@
         _saving = true;
         _error = null;
 
-        _form.ScheduledStartDate = CombineDateTime(_startDate, _startTime) ?? DateTime.Now;
-        _form.ScheduledEndDate = CombineDateTime(_endDate, _endTime) ?? DateTime.Now.AddDays(1);
+        // Auto-calculate schedule from spans
+        var ordered = _spans
+            .Where(s => s.StartDateTime.HasValue)
+            .OrderBy(s => s.StartDateTime)
+            .ToList();
+
+        if (ordered.Any())
+        {
+            _form.ScheduledStartDate = ordered.First().StartDateTime!.Value;
+            _form.ScheduledEndDate = ordered.Last().EndDateTime
+                ?? ordered.Last().StartDateTime!.Value.AddHours(1);
+        }
+        else
+        {
+            _form.ScheduledStartDate = DateTime.Now;
+            _form.ScheduledEndDate = DateTime.Now.AddDays(1);
+        }
+
+        // Auto-fill material cost from billable spans × hourly rate
+        var selectedEq = _equipmentList.FirstOrDefault(e => e.Id == _form.EquipmentId);
+        var billableHours = (decimal)_spans.Where(s => s.IsBillable).Sum(s => s.Hours);
+        if (selectedEq != null && billableHours > 0 && _form.TotalMaterialCost == 0)
+            _form.TotalMaterialCost = billableHours * selectedEq.HourlyRate;
 
         try
         {
@@ -172,6 +344,7 @@
             else
             {
                 _error = error;
+                Snackbar.Add(error ?? "Failed to create work order.", Severity.Error);
             }
         }
         finally
@@ -195,18 +368,13 @@
             else
             {
                 _error = error;
+                Snackbar.Add(error ?? "Failed to update status.", Severity.Error);
             }
         }
         finally
         {
             _saving = false;
         }
-    }
-
-    private static DateTime? CombineDateTime(DateTime? date, TimeSpan? time)
-    {
-        if (!date.HasValue) return null;
-        return date.Value.Date + (time ?? TimeSpan.Zero);
     }
 
     private void Cancel()

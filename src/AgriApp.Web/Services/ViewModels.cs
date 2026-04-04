@@ -28,6 +28,15 @@ public record AttendanceResponse(
     double? Latitude,
     double? Longitude);
 
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+public record UserResponse(
+    int Id,
+    string Name,
+    string Email,
+    string Role,
+    int? CenterId);
+
 // ── Equipment ────────────────────────────────────────────────────────────────
 
 public record EquipmentResponse(
@@ -177,6 +186,17 @@ public record PaymentResultResponse(
 
 // ── Work Order ────────────────────────────────────────────────────────────────
 
+public record WorkOrderTimeLog(
+    int Id,
+    DateTime StartTime,
+    DateTime EndTime,
+    string Type,
+    string? Notes)
+{
+    public double Hours => EndTime > StartTime ? (EndTime - StartTime).TotalHours : 0;
+    public bool IsBillable => Type == "Working";
+}
+
 public record WorkOrderDetail(
     int Id,
     int CenterId,
@@ -200,6 +220,8 @@ public record WorkOrderFormRequest
     public int? InquiryId { get; set; }
 
     public int? CenterId { get; set; }
+
+    public int? CustomerId { get; set; }
 
     [Required, MaxLength(1000, ErrorMessage = "Description is too long")]
     public string Description { get; set; } = string.Empty;

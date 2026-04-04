@@ -33,37 +33,34 @@ builder.Services.AddHttpClient("AgriApi", client =>
     client.BaseAddress = new Uri(apiBase))
     .AddHttpMessageHandler<JwtAuthorizationMessageHandler>();
 
+// ── Helper to get named HttpClient ───────────────────────────────────────────
+static HttpClient Api(IServiceProvider sp) =>
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi");
+
 // ── Typed service registrations ──────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService>(sp =>
-{
-    var factory = sp.GetRequiredService<IHttpClientFactory>();
-    var authProvider = sp.GetRequiredService<JwtAuthenticationStateProvider>();
-    return new AuthService(factory.CreateClient("AgriApi"), authProvider);
-});
+    new AuthService(Api(sp), sp.GetRequiredService<JwtAuthenticationStateProvider>()));
 
 builder.Services.AddScoped<IWorkOrderService>(sp =>
-{
-    var factory = sp.GetRequiredService<IHttpClientFactory>();
-    return new WorkOrderService(factory.CreateClient("AgriApi"));
-});
+    new WorkOrderService(Api(sp), sp.GetRequiredService<ILogger<WorkOrderService>>()));
 
 builder.Services.AddScoped<IAttendanceService>(sp =>
-{
-    var factory = sp.GetRequiredService<IHttpClientFactory>();
-    return new AttendanceService(factory.CreateClient("AgriApi"));
-});
+    new AttendanceService(Api(sp)));
 
 builder.Services.AddScoped<IEquipmentService>(sp =>
-    new EquipmentService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+    new EquipmentService(Api(sp), sp.GetRequiredService<ILogger<EquipmentService>>()));
 
 builder.Services.AddScoped<IInquiryService>(sp =>
-    new InquiryService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+    new InquiryService(Api(sp), sp.GetRequiredService<ILogger<InquiryService>>()));
 
 builder.Services.AddScoped<IInvoiceService>(sp =>
-    new InvoiceService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+    new InvoiceService(Api(sp), sp.GetRequiredService<ILogger<InvoiceService>>()));
 
 builder.Services.AddScoped<IPaymentService>(sp =>
-    new PaymentService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("AgriApi")));
+    new PaymentService(Api(sp), sp.GetRequiredService<ILogger<PaymentService>>()));
+
+builder.Services.AddScoped<IUserService>(sp =>
+    new UserService(Api(sp), sp.GetRequiredService<ILogger<UserService>>()));
 
 // ── Localization default culture ─────────────────────────────────────────────
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
