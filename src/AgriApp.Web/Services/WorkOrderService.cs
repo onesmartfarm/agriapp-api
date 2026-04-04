@@ -24,15 +24,68 @@ public class WorkOrderService : IWorkOrderService
         }
     }
 
-    public async Task<WorkOrderListItem?> GetByIdAsync(int id)
+    public async Task<WorkOrderDetail?> GetByIdAsync(int id)
     {
         try
         {
-            return await _http.GetFromJsonAsync<WorkOrderListItem>($"api/work-orders/{id}");
+            return await _http.GetFromJsonAsync<WorkOrderDetail>($"api/work-orders/{id}");
         }
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<(bool Success, string? Error, WorkOrderDetail? WorkOrder)> CreateAsync(WorkOrderFormRequest request)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("api/work-orders", new
+            {
+                request.ResponsibleUserId,
+                request.EquipmentId,
+                request.InquiryId,
+                request.CenterId,
+                request.Description,
+                request.Type,
+                ScheduledStartDate = request.ScheduledStartDate.ToUniversalTime(),
+                ScheduledEndDate = request.ScheduledEndDate.ToUniversalTime(),
+                request.TotalMaterialCost
+            });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var wo = await response.Content.ReadFromJsonAsync<WorkOrderDetail>();
+                return (true, null, wo);
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return (false, error, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message, null);
+        }
+    }
+
+    public async Task<(bool Success, string? Error, WorkOrderDetail? WorkOrder)> UpdateStatusAsync(int id, string status)
+    {
+        try
+        {
+            var response = await _http.PatchAsJsonAsync($"api/work-orders/{id}/status", new { Status = status });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var wo = await response.Content.ReadFromJsonAsync<WorkOrderDetail>();
+                return (true, null, wo);
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            return (false, error, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message, null);
         }
     }
 }

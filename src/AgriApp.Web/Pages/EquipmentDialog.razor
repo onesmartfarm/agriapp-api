@@ -40,7 +40,7 @@
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
         <MudButton form="eqForm" ButtonType="ButtonType.Submit" Color="Color.Primary"
                    Variant="Variant.Filled" Disabled="_saving">
             @(_saving ? "Saving…" : "Save")

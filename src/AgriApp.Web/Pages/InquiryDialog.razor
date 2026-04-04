@@ -1,5 +1,6 @@
 @using AgriApp.Web.Services
 @inject IInquiryService InquiryService
+@inject IEquipmentService EquipmentService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -10,13 +11,28 @@
                 <DataAnnotationsValidator />
                 <MudStack Spacing="3">
                     <MudNumericField @bind-Value="_createForm.CustomerId" Label="Customer ID"
-                                     FullWidth="true" For="@(() => _createForm.CustomerId)" />
-                    <MudNumericField @bind-Value="_createForm.EquipmentId" Label="Equipment ID"
-                                     FullWidth="true" For="@(() => _createForm.EquipmentId)" />
-                    <MudNumericField @bind-Value="_createForm.SalespersonId" Label="Salesperson ID"
-                                     FullWidth="true" For="@(() => _createForm.SalespersonId)" />
+                                     FullWidth="true" For="@(() => _createForm.CustomerId)"
+                                     HelperText="Enter the customer's numeric ID" />
+
+                    <MudSelect T="int" @bind-Value="_createForm.EquipmentId" Label="Equipment"
+                               FullWidth="true" For="@(() => _createForm.EquipmentId)"
+                               Disabled="_loadingEquipment">
+                        <MudSelectItem T="int" Value="0">— Select Equipment —</MudSelectItem>
+                        @foreach (var eq in _equipmentList)
+                        {
+                            <MudSelectItem T="int" Value="@eq.Id">
+                                @eq.Name (@eq.Category) — ₹@eq.HourlyRate.ToString("N0")/hr
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudNumericField @bind-Value="_createForm.SalespersonId" Label="Salesperson User ID"
+                                     FullWidth="true" For="@(() => _createForm.SalespersonId)"
+                                     HelperText="Enter the salesperson's numeric user ID" />
+
                     <MudNumericField @bind-Value="_createForm.CenterId" Label="Center ID (optional)"
                                      FullWidth="true" />
+
                     <ValidationSummary />
                     @if (!string.IsNullOrEmpty(_error))
                     {
@@ -50,7 +66,7 @@
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
         @if (IsCreate)
         {
             <MudButton form="inqCreateForm" ButtonType="ButtonType.Submit"
@@ -83,12 +99,30 @@
 
     private CreateInquiryRequest _createForm = new();
     private UpdateInquiryStatusRequest _statusForm = new();
+    private List<EquipmentResponse> _equipmentList = new();
     private bool _saving = false;
+    private bool _loadingEquipment = false;
     private string? _error;
 
     protected override void OnParametersSet()
     {
         _statusForm.Status = CurrentStatus;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsCreate)
+        {
+            _loadingEquipment = true;
+            try
+            {
+                _equipmentList = await EquipmentService.GetAllAsync();
+            }
+            finally
+            {
+                _loadingEquipment = false;
+            }
+        }
     }
 
     private async Task SaveCreate()

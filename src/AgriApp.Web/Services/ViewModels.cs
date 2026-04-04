@@ -174,3 +174,51 @@ public record PaymentResultResponse(
     string TransactionReference,
     string InvoiceStatus,
     decimal InvoiceBalanceDue);
+
+// ── Work Order ────────────────────────────────────────────────────────────────
+
+public record WorkOrderDetail(
+    int Id,
+    int CenterId,
+    int? InquiryId,
+    int? EquipmentId,
+    int ResponsibleUserId,
+    string Description,
+    string Type,
+    string Status,
+    DateTime ScheduledStartDate,
+    DateTime ScheduledEndDate,
+    decimal TotalMaterialCost);
+
+public record WorkOrderFormRequest
+{
+    [Required, Range(1, int.MaxValue, ErrorMessage = "Responsible User ID is required")]
+    public int ResponsibleUserId { get; set; }
+
+    public int? EquipmentId { get; set; }
+
+    public int? InquiryId { get; set; }
+
+    public int? CenterId { get; set; }
+
+    [Required, MaxLength(1000, ErrorMessage = "Description is too long")]
+    public string Description { get; set; } = string.Empty;
+
+    [Required]
+    public string Type { get; set; } = "RentalBooking";
+
+    [Required]
+    public DateTime ScheduledStartDate { get; set; } = DateTime.Now;
+
+    [Required]
+    public DateTime ScheduledEndDate { get; set; } = DateTime.Now.AddDays(1);
+
+    [Range(0, double.MaxValue, ErrorMessage = "Cost cannot be negative")]
+    public decimal TotalMaterialCost { get; set; }
+}
+
+public record WorkOrderStatusUpdateRequest
+{
+    [Required]
+    public string Status { get; set; } = "Scheduled";
+}

@@ -1,48 +1,115 @@
 @using AgriApp.Core.Enums
 @using AgriApp.Web.Services
-
 @inject IWorkOrderService WorkOrderService
-@inject IDialogService DialogService
+@inject IEquipmentService EquipmentService
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
-        <MudStack Spacing="3">
-            <MudTextField @bind-Value="_description" Label="Description" FullWidth="true" />
+        @if (IsCreate)
+        {
+            <EditForm id="woCreateForm" Model="_form" OnValidSubmit="SaveCreate">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_form.Description" Label="Description"
+                                  Lines="2" FullWidth="true"
+                                  For="@(() => _form.Description)" />
 
-            <MudSelect @bind-Value="_type" Label="Type" FullWidth="true">
-                @foreach (var type in Enum.GetValues(typeof(WorkOrderType)).Cast<WorkOrderType>())
-                {
-                    <MudSelectItem Value="@type">@type</MudSelectItem>
-                }
-            </MudSelect>
+                    <MudSelect @bind-Value="_form.Type" Label="Work Order Type" FullWidth="true">
+                        @foreach (var t in Enum.GetValues(typeof(WorkOrderType)).Cast<WorkOrderType>())
+                        {
+                            <MudSelectItem Value="@t.ToString()">@t</MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudSelect @bind-Value="_status" Label="Status" FullWidth="true">
-                @foreach (var status in Enum.GetValues(typeof(WorkStatus)).Cast<WorkStatus>())
-                {
-                    <MudSelectItem Value="@status">@status</MudSelectItem>
-                }
-            </MudSelect>
+                    <MudSelect T="int?" @bind-Value="_form.EquipmentId" Label="Equipment (optional)"
+                               FullWidth="true" Disabled="_loadingEquipment">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                        @foreach (var eq in _equipmentList)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)eq.Id)">
+                                @eq.Name (@eq.Category) — ₹@eq.HourlyRate.ToString("N0")/hr
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudDatePicker @bind-Date="_scheduledStartDate" Label="Scheduled Start Date" FullWidth="true" />
-            <MudTimePicker @bind-Time="_scheduledStartTime" Label="Start Time" FullWidth="true" />
+                    <MudNumericField @bind-Value="_form.ResponsibleUserId"
+                                     Label="Responsible User ID"
+                                     FullWidth="true"
+                                     For="@(() => _form.ResponsibleUserId)" />
 
-            <MudDatePicker @bind-Date="_scheduledEndDate" Label="Scheduled End Date" FullWidth="true" />
-            <MudTimePicker @bind-Time="_scheduledEndTime" Label="End Time" FullWidth="true" />
+                    <MudDatePicker @bind-Date="_startDate" Label="Scheduled Start Date" />
+                    <MudTimePicker @bind-Time="_startTime" Label="Start Time" />
 
-            <MudNumericField @bind-Value="_equipmentId" Label="Equipment ID" FullWidth="true" />
-            <MudNumericField @bind-Value="_responsibleUserId" Label="Responsible User ID" FullWidth="true" />
-            <MudNumericField @bind-Value="_totalMaterialCost" Label="Total Material Cost" FullWidth="true" Format="C2" />
-        </MudStack>
+                    <MudDatePicker @bind-Date="_endDate" Label="Scheduled End Date" />
+                    <MudTimePicker @bind-Time="_endTime" Label="End Time" />
+
+                    <MudNumericField @bind-Value="_form.TotalMaterialCost"
+                                     Label="Total Material Cost (₹)"
+                                     Format="N2" FullWidth="true"
+                                     For="@(() => _form.TotalMaterialCost)" />
+
+                    <ValidationSummary />
+                    @if (!string.IsNullOrEmpty(_error))
+                    {
+                        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                    }
+                </MudStack>
+            </EditForm>
+        }
+        else
+        {
+            <EditForm id="woStatusForm" Model="_statusForm" OnValidSubmit="SaveStatus">
+                <DataAnnotationsValidator />
+                <MudStack Spacing="3">
+                    @if (_detail != null)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            <b>@_detail.Description</b><br />
+                            @_detail.Type · @_detail.ScheduledStartDate.ToString("yyyy-MM-dd HH:mm") →
+                            @_detail.ScheduledEndDate.ToString("yyyy-MM-dd HH:mm")
+                        </MudText>
+                        <MudDivider />
+                    }
+
+                    <MudSelect @bind-Value="_statusForm.Status" Label="New Status" FullWidth="true">
+                        @foreach (var s in Enum.GetValues(typeof(WorkStatus)).Cast<WorkStatus>())
+                        {
+                            <MudSelectItem Value="@s.ToString()">@s</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <ValidationSummary />
+                    @if (!string.IsNullOrEmpty(_error))
+                    {
+                        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                    }
+                </MudStack>
+            </EditForm>
+        }
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Save" Variant="Variant.Filled">Save</MudButton>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
+        @if (IsCreate)
+        {
+            <MudButton form="woCreateForm" ButtonType="ButtonType.Submit"
+                       Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
+                @(_saving ? "Creating…" : "Create")
+            </MudButton>
+        }
+        else
+        {
+            <MudButton form="woStatusForm" ButtonType="ButtonType.Submit"
+                       Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
+                @(_saving ? "Saving…" : "Update Status")
+            </MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] 
+    [CascadingParameter]
     public dynamic? MudDialog { get; set; }
 
     [Parameter]
@@ -51,67 +118,99 @@
     [Parameter]
     public int WorkOrderId { get; set; }
 
-    private string _description = string.Empty;
-    private WorkOrderType _type = WorkOrderType.RentalBooking;
-    private WorkStatus _status = WorkStatus.Scheduled;
-    private DateTime? _scheduledStartDate;
-    private TimeSpan? _scheduledStartTime;
-    private DateTime? _scheduledEndDate;
-    private TimeSpan? _scheduledEndTime;
-    private int? _equipmentId;
-    private int? _responsibleUserId;
-    private decimal? _totalMaterialCost = 0;
+    private WorkOrderFormRequest _form = new();
+    private WorkOrderStatusUpdateRequest _statusForm = new();
+    private WorkOrderDetail? _detail;
+    private List<EquipmentResponse> _equipmentList = new();
+    private bool _saving = false;
+    private bool _loadingEquipment = false;
+    private string? _error;
+
+    private DateTime? _startDate = DateTime.Today;
+    private TimeSpan? _startTime = TimeSpan.FromHours(8);
+    private DateTime? _endDate = DateTime.Today.AddDays(1);
+    private TimeSpan? _endTime = TimeSpan.FromHours(17);
 
     protected override async Task OnInitializedAsync()
     {
+        _loadingEquipment = true;
+        try
+        {
+            _equipmentList = await EquipmentService.GetAllAsync();
+        }
+        finally
+        {
+            _loadingEquipment = false;
+        }
+
         if (!IsCreate && WorkOrderId > 0)
         {
-            var workOrder = await WorkOrderService.GetByIdAsync(WorkOrderId);
-            if (workOrder != null)
+            _detail = await WorkOrderService.GetByIdAsync(WorkOrderId);
+            if (_detail != null)
             {
-                _description = workOrder.Description;
-                _scheduledStartDate = workOrder.ScheduledStartDate.Date;
-                _scheduledStartTime = workOrder.ScheduledStartDate.TimeOfDay;
-                _scheduledEndDate = workOrder.ScheduledEndDate.Date;
-                _scheduledEndTime = workOrder.ScheduledEndDate.TimeOfDay;
-                _totalMaterialCost = workOrder.TotalMaterialCost;
+                _statusForm.Status = _detail.Status;
             }
         }
     }
 
-    private async Task Save()
+    private async Task SaveCreate()
     {
+        _saving = true;
+        _error = null;
+
+        _form.ScheduledStartDate = CombineDateTime(_startDate, _startTime) ?? DateTime.Now;
+        _form.ScheduledEndDate = CombineDateTime(_endDate, _endTime) ?? DateTime.Now.AddDays(1);
+
         try
         {
-            // Combine dates and times
-            var startDateTime = _scheduledStartDate.HasValue && _scheduledStartTime.HasValue
-                ? _scheduledStartDate.Value.Add(_scheduledStartTime.Value)
-                : DateTime.Now;
-
-            var endDateTime = _scheduledEndDate.HasValue && _scheduledEndTime.HasValue
-                ? _scheduledEndDate.Value.Add(_scheduledEndTime.Value)
-                : DateTime.Now.AddDays(1);
-
-            // TODO: Implement actual save via WorkOrderService
-            // For now, just close the dialog
-            if (MudDialog != null)
+            var (success, error, _) = await WorkOrderService.CreateAsync(_form);
+            if (success)
             {
-                MudDialog.Close();
+                Snackbar.Add("Work order created.", Severity.Success);
+                if (MudDialog != null) MudDialog.Close();
+            }
+            else
+            {
+                _error = error;
             }
         }
-        catch (Exception ex)
+        finally
         {
-            Console.WriteLine($"Error saving work order: {ex.Message}");
+            _saving = false;
         }
+    }
+
+    private async Task SaveStatus()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var (success, error, _) = await WorkOrderService.UpdateStatusAsync(WorkOrderId, _statusForm.Status);
+            if (success)
+            {
+                Snackbar.Add("Work order status updated.", Severity.Success);
+                if (MudDialog != null) MudDialog.Close();
+            }
+            else
+            {
+                _error = error;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static DateTime? CombineDateTime(DateTime? date, TimeSpan? time)
+    {
+        if (!date.HasValue) return null;
+        return date.Value.Date + (time ?? TimeSpan.Zero);
     }
 
     private void Cancel()
     {
-        try
-        {
-            if (MudDialog != null)
-                MudDialog.Cancel();
-        }
-        catch { }
+        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
     }
 }
