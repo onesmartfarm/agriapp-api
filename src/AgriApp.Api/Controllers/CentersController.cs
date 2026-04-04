@@ -45,6 +45,13 @@ public class CentersController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
+        // Non-SuperUsers can only retrieve their own center
+        if (_currentUser.Role != Core.Enums.Role.SuperUser)
+        {
+            if (_currentUser.CenterId != id)
+                return Forbid();
+        }
+
         var center = await _db.Centers
             .AsNoTracking()
             .Where(c => c.Id == id)
