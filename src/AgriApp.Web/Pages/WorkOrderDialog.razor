@@ -1,8 +1,11 @@
 @using AgriApp.Core.Enums
 @using AgriApp.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IWorkOrderService WorkOrderService
 @inject IEquipmentService EquipmentService
 @inject IUserService UserService
+@inject ICustomerService CustomerService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -56,10 +59,10 @@
                                Label="Customer (optional)"
                                FullWidth="true" Disabled="_loadingLookups">
                         <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
-                        @foreach (var u in _allUsers)
+                        @foreach (var c in _customerList)
                         {
-                            <MudSelectItem T="int?" Value="@((int?)u.Id)">
-                                @u.Name (@u.Role)
+                            <MudSelectItem T="int?" Value="@((int?)c.Id)">
+                                @c.Name @(c.Phone != null ? $"({c.Phone})" : "")
                             </MudSelectItem>
                         }
                     </MudSelect>
@@ -153,7 +156,7 @@
                     </MudPaper>
 
                     <MudNumericField @bind-Value="_form.TotalMaterialCost"
-                                     Label="Total Material Cost — ₹ (auto-filled from spans, editable)"
+                                     Label="Materials / other charges — ₹ (excludes rental; rental uses Working spans × equipment rate at invoice)"
                                      Format="N2" FullWidth="true"
                                      For="@(() => _form.TotalMaterialCost)" />
 
@@ -236,7 +239,7 @@
 
     private List<EquipmentResponse> _equipmentList = new();
     private List<UserResponse> _staffList = new();
-    private List<UserResponse> _allUsers = new();
+    private List<CustomerResponse> _customerList = new();
 
     private bool _saving = false;
     private bool _loadingLookups = false;
@@ -272,12 +275,18 @@
         {
             var equipTask = EquipmentService.GetAllAsync();
             var userTask = UserService.GetAllAsync();
-            await Task.WhenAll(equipTask, userTask);
-            _equipmentList = equipTask.Result;
-            _allUsers = userTask.Result;
-            _staffList = _allUsers
+            var customerTask = CustomerService.GetAllAsync();
+            await Task.WhenAll(equipTask, userTask, customerTask);
+            _equipmentList = await equipTask;
+            _customerList = await customerTask;
+            var users = await userTask;
+            _staffList = users
                 .Where(u => u.Role is "Staff" or "Supervisor" or "Manager" or "SuperUser")
                 .ToList();
+
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var centerId) && centerId > 0)
+                _form.CenterId = centerId;
         }
         catch (Exception ex)
         {
@@ -327,11 +336,14 @@
             _form.ScheduledEndDate = DateTime.Now.AddDays(1);
         }
 
-        // Auto-fill material cost from billable spans × hourly rate
-        var selectedEq = _equipmentList.FirstOrDefault(e => e.Id == _form.EquipmentId);
-        var billableHours = (decimal)_spans.Where(s => s.IsBillable).Sum(s => s.Hours);
-        if (selectedEq != null && billableHours > 0 && _form.TotalMaterialCost == 0)
-            _form.TotalMaterialCost = billableHours * selectedEq.HourlyRate;
+        _form.TimeLogs = _spans
+            .Where(s => s.StartDateTime.HasValue && s.EndDateTime.HasValue && s.End > s.Start)
+            .Select(s => new WorkOrderTimeLogRequest(
+                StartTime: DateTime.SpecifyKind(s.StartDateTime!.Value, DateTimeKind.Local).ToUniversalTime(),
+                EndTime: DateTime.SpecifyKind(s.EndDateTime!.Value, DateTimeKind.Local).ToUniversalTime(),
+                LogType: s.Type,
+                Notes: string.IsNullOrWhiteSpace(s.Notes) ? null : s.Notes))
+            .ToList();
 
         try
         {

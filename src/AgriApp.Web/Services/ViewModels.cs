@@ -313,7 +313,16 @@ public record WorkOrderFormRequest
 
     [Range(0, double.MaxValue, ErrorMessage = "Cost cannot be negative")]
     public decimal TotalMaterialCost { get; set; }
+
+    /// <summary>Timeline rows persisted server-side; invoice uses only Working-type logs for rental hours.</summary>
+    public List<WorkOrderTimeLogRequest>? TimeLogs { get; set; }
 }
+
+public record WorkOrderTimeLogRequest(
+    DateTime StartTime,
+    DateTime EndTime,
+    string LogType,
+    string? Notes);
 
 public record WorkOrderStatusUpdateRequest
 {

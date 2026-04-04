@@ -47,7 +47,7 @@
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="CloseDialog">@(_result != null ? "Close" : "Cancel")</MudButton>
+        <MudButton ButtonType="ButtonType.Button" OnClick="CloseDialog">@(_result != null ? "Close" : "Cancel")</MudButton>
         @if (_result == null)
         {
             <MudButton form="payForm" ButtonType="ButtonType.Submit"

@@ -32,6 +32,8 @@ public class InvoiceService
     {
         var workOrder = await _db.WorkOrders
             .AsNoTracking()
+            .Include(w => w.Equipment)
+            .Include(w => w.TimeLogs)
             .FirstOrDefaultAsync(w => w.Id == request.WorkOrderId)
             ?? throw new KeyNotFoundException($"WorkOrder {request.WorkOrderId} not found.");
 
@@ -47,8 +49,29 @@ public class InvoiceService
             throw new InvalidOperationException(
                 $"An invoice has already been generated for WorkOrder {request.WorkOrderId}.");
 
-        var baseAmount = Math.Round(
-            workOrder.TotalMaterialCost + request.AdditionalFees, 2, MidpointRounding.AwayFromZero);
+        decimal baseAmount;
+        if (workOrder.TimeLogs.Count > 0)
+        {
+            var workingHours = workOrder.TimeLogs
+                .Where(t => t.LogType == WorkTimeLogType.Working)
+                .Sum(t => (decimal)(t.EndTime - t.StartTime).TotalHours);
+
+            var rentalFromWorking = workOrder.Equipment != null
+                ? Math.Round(workingHours * workOrder.Equipment.HourlyRate, 2, MidpointRounding.AwayFromZero)
+                : 0m;
+
+            baseAmount = Math.Round(
+                rentalFromWorking + workOrder.TotalMaterialCost + request.AdditionalFees,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            baseAmount = Math.Round(
+                workOrder.TotalMaterialCost + request.AdditionalFees,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
 
         var gst = GstCalculator.Calculate(baseAmount);
 

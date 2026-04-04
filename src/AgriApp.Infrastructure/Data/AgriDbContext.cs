@@ -28,6 +28,7 @@ public class AgriDbContext : DbContext
     public DbSet<CommissionLedger> CommissionLedgers => Set<CommissionLedger>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<WorkOrderTimeLog> WorkOrderTimeLogs => Set<WorkOrderTimeLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +47,7 @@ public class AgriDbContext : DbContext
         ConfigureCommissionLedger(modelBuilder);
         ConfigureInvoice(modelBuilder);
         ConfigurePayment(modelBuilder);
+        ConfigureWorkOrderTimeLog(modelBuilder);
     }
 
     private void ConfigureCenter(ModelBuilder modelBuilder)
@@ -409,4 +411,36 @@ public class AgriDbContext : DbContext
                 e.CenterId == _currentUser.CenterId);
         });
     }
+
+    private void ConfigureWorkOrderTimeLog(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<WorkOrderTimeLog>(entity =>
+        {
+            entity.ToTable("work_order_time_logs");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.WorkOrderId).IsRequired();
+            entity.Property(e => e.StartTime).IsRequired();
+            entity.Property(e => e.EndTime).IsRequired();
+            entity.Property(e => e.LogType).HasConversion<string>().IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            // Relationship
+            entity.HasOne(e => e.WorkOrder)
+                  .WithMany(w => w.TimeLogs)
+                  .HasForeignKey(e => e.WorkOrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Index for querying logs by WorkOrder
+            entity.HasIndex(e => e.WorkOrderId)
+                  .HasDatabaseName("IX_WorkOrderTimeLogs_WorkOrderId");
+
+            // Constraint: EndTime must be after StartTime
+            entity.HasCheckConstraint(
+                "CK_WorkOrderTimeLogs_EndTimeAfterStartTime",
+                "\"EndTime\" > \"StartTime\"");
+        });
+    }
 }
+

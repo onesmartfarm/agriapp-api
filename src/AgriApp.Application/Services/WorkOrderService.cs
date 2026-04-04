@@ -60,6 +60,30 @@ public class WorkOrderService
         _db.WorkOrders.Add(workOrder);
         await _db.SaveChangesAsync();
 
+        if (request.TimeLogs is { Count: > 0 } logs)
+        {
+            foreach (var tl in logs)
+            {
+                if (!Enum.TryParse<WorkTimeLogType>(tl.LogType, ignoreCase: true, out var logType))
+                    throw new ArgumentException($"Invalid time log type: {tl.LogType}");
+
+                if (tl.EndTime <= tl.StartTime)
+                    throw new ArgumentException("Each time log must have EndTime after StartTime.");
+
+                _db.WorkOrderTimeLogs.Add(new WorkOrderTimeLog
+                {
+                    WorkOrderId = workOrder.Id,
+                    StartTime = tl.StartTime,
+                    EndTime = tl.EndTime,
+                    LogType = logType,
+                    Notes = tl.Notes,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await _db.SaveChangesAsync();
+        }
+
         return MapToResponse(workOrder);
     }
 

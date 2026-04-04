@@ -18,7 +18,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            return await _http.GetFromJsonAsync<List<WorkOrderListItem>>("api/work-orders")
+            return await _http.GetFromJsonAsync<List<WorkOrderListItem>>("api/workorders")
                    ?? new List<WorkOrderListItem>();
         }
         catch (Exception ex)
@@ -32,7 +32,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            return await _http.GetFromJsonAsync<WorkOrderDetail>($"api/work-orders/{id}");
+            return await _http.GetFromJsonAsync<WorkOrderDetail>($"api/workorders/{id}");
         }
         catch (Exception ex)
         {
@@ -45,7 +45,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            var response = await _http.PostAsJsonAsync("api/work-orders", new
+            var response = await _http.PostAsJsonAsync("api/workorders", new
             {
                 request.ResponsibleUserId,
                 request.EquipmentId,
@@ -55,7 +55,14 @@ public class WorkOrderService : IWorkOrderService
                 request.Type,
                 ScheduledStartDate = request.ScheduledStartDate.ToUniversalTime(),
                 ScheduledEndDate = request.ScheduledEndDate.ToUniversalTime(),
-                request.TotalMaterialCost
+                request.TotalMaterialCost,
+                TimeLogs = request.TimeLogs?.Select(t => new
+                {
+                    StartTime = t.StartTime.ToUniversalTime(),
+                    EndTime = t.EndTime.ToUniversalTime(),
+                    t.LogType,
+                    t.Notes
+                }).ToList()
             });
 
             if (response.IsSuccessStatusCode)
@@ -79,7 +86,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            var response = await _http.PatchAsJsonAsync($"api/work-orders/{id}/status", new { Status = status });
+            var response = await _http.PatchAsJsonAsync($"api/workorders/{id}/status", new { Status = status });
 
             if (response.IsSuccessStatusCode)
             {
@@ -102,7 +109,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            var response = await _http.DeleteAsync($"api/work-orders/{id}");
+            var response = await _http.DeleteAsync($"api/workorders/{id}");
             if (response.IsSuccessStatusCode)
                 return (true, null);
 

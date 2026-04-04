@@ -32,4 +32,5 @@ public class WorkOrder : ICenterScoped, IAuditable
     public Equipment? Equipment { get; set; }
     public User ResponsibleUser { get; set; } = null!;
     public Inquiry? Inquiry { get; set; }
+    public ICollection<WorkOrderTimeLog> TimeLogs { get; set; } = new List<WorkOrderTimeLog>();
 }

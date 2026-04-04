@@ -1,5 +1,8 @@
 @using AgriApp.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IInvoiceService InvoiceService
+@inject ICenterService CenterService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -11,8 +14,17 @@
                                  FullWidth="true" For="@(() => _form.WorkOrderId)" />
                 <MudNumericField @bind-Value="_form.CustomerId" Label="Customer ID"
                                  FullWidth="true" For="@(() => _form.CustomerId)" />
-                <MudNumericField @bind-Value="_form.CenterId" Label="Center ID (SuperUser only — leave 0 to auto-detect)"
-                                 FullWidth="true" />
+                @if (_isSuperUser)
+                {
+                    <MudSelect T="int?" @bind-Value="_form.CenterId" Label="Center (optional override)"
+                               FullWidth="true" Disabled="_loadingCenters">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— From your token —</MudSelectItem>
+                        @foreach (var c in _centerList)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
                 <MudDatePicker @bind-Date="_dueDate" Label="Due Date" />
                 <MudNumericField @bind-Value="_form.AdditionalFees" Label="Additional Fees (₹)"
                                  Format="N2" FullWidth="true" For="@(() => _form.AdditionalFees)" />
@@ -26,7 +38,7 @@
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
         <MudButton form="genInvForm" ButtonType="ButtonType.Submit"
                    Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving">
             @(_saving ? "Generating…" : "Generate")
@@ -42,13 +54,42 @@
     private DateTime? _dueDate = DateTime.Today.AddDays(30);
     private bool _saving = false;
     private string? _error;
+    private bool _isSuperUser;
+    private List<CenterResponse> _centerList = new();
+    private bool _loadingCenters;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isSuperUser = auth.User.IsInRole("SuperUser");
+        if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var cid) && cid > 0)
+            _form.CenterId = cid;
+
+        if (_isSuperUser)
+        {
+            _loadingCenters = true;
+            try
+            {
+                _centerList = await CenterService.GetAllAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Could not load centers: {ex.Message}", Severity.Warning);
+            }
+            finally
+            {
+                _loadingCenters = false;
+            }
+        }
+    }
 
     private async Task Save()
     {
         _saving = true;
         _error = null;
         _form.DueDate = _dueDate ?? DateTime.Today.AddDays(30);
-        _form.CenterId = _form.CenterId == 0 ? null : _form.CenterId;
+        if (_form.CenterId == 0)
+            _form.CenterId = null;
         try
         {
             var (success, error, _) = await InvoiceService.GenerateAsync(_form);

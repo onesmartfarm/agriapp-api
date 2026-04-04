@@ -1,7 +1,10 @@
 @using AgriApp.Core.Enums
 @using AgriApp.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IEquipmentService EquipmentService
 @inject IVendorService VendorService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ICenterService CenterService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -23,11 +26,19 @@
                                  Format="N2" FullWidth="true"
                                  For="@(() => _form.HourlyRate)" />
 
-                @if (IsCreate)
+                @if (IsCreate && _isSuperUser)
                 {
-                    <MudNumericField @bind-Value="_form.CenterId" Label="Center ID"
-                                     FullWidth="true"
-                                     For="@(() => _form.CenterId)" />
+                    <MudSelect T="int" @bind-Value="_form.CenterId" Label="Center"
+                               FullWidth="true" Disabled="_loadingCenters">
+                        @foreach (var c in _centerList)
+                        {
+                            <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (IsCreate && _centerLabel != null)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@_centerLabel</MudText>
                 }
 
                 <MudSelect T="int?" @bind-Value="_form.VendorId"
@@ -83,9 +94,39 @@
     private bool _loadingVendors = false;
     private string? _error;
     private DateTime? _purchaseDate;
+    private string? _centerLabel;
+    private bool _isSuperUser;
+    private List<CenterResponse> _centerList = new();
+    private bool _loadingCenters;
 
     protected override async Task OnInitializedAsync()
     {
+        if (IsCreate)
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            _isSuperUser = auth.User.IsInRole("SuperUser");
+            if (_isSuperUser)
+            {
+                _loadingCenters = true;
+                try
+                {
+                    _centerList = await CenterService.GetAllAsync();
+                    if (_centerList.Count > 0)
+                        _form.CenterId = _centerList[0].Id;
+                }
+                catch { /* snackbar optional */ }
+                finally
+                {
+                    _loadingCenters = false;
+                }
+            }
+            else if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var cid) && cid > 0)
+            {
+                _form.CenterId = cid;
+                _centerLabel = "Equipment will be created for your center.";
+            }
+        }
+
         _loadingVendors = true;
         try
         {
