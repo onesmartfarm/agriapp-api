@@ -19,7 +19,7 @@
 
                 @if (_loading)
                 {
-                    <MudProgressCircular IsIndeterminate="true" />
+                    <MudProgressCircular indeterminate="true" />
                 }
                 else if (_workOrders == null || _workOrders.Count == 0)
                 {
@@ -49,7 +49,7 @@
                             <PropertyColumn Property="x => x.ScheduledEndDate" Title="End Date" Format="yyyy-MM-dd HH:mm" Sortable="true" />
                             <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
                                 <CellTemplate Context="statusCtx">
-                                    <span style="padding: 4px 8px; border-radius: 4px; color: white; background-color: @GetStatusColorHex(statusCtx.Item.Status); font-size: 0.85em;">
+                                    <span style="padding: 4px 8px; border-radius: 4px; color: white; background-color: @StatusBadgeHex(statusCtx.Item.Status); font-size: 0.85em;">
                                         @statusCtx.Item.Status
                                     </span>
                                 </CellTemplate>
@@ -95,6 +95,7 @@
         }
         catch (Exception ex)
         {
+            _workOrders = null;
             Snackbar.Add(ex.Message, Severity.Error);
         }
         finally
@@ -160,23 +161,16 @@
         }
     }
 
-    private Color GetStatusColor(WorkStatus status) => status switch
-    {
-        WorkStatus.Scheduled => Color.Info,
-        WorkStatus.InProgress => Color.Warning,
-        WorkStatus.Completed => Color.Success,
-        WorkStatus.Cancelled => Color.Error,
-        WorkStatus.Pending => Color.Default,
-        _ => Color.Default
-    };
-
-    private string GetStatusColorHex(WorkStatus status) => status switch
-    {
-        WorkStatus.Scheduled => "#2196f3",
-        WorkStatus.InProgress => "#ff9800",
-        WorkStatus.Completed => "#4caf50",
-        WorkStatus.Cancelled => "#f44336",
-        WorkStatus.Pending => "#9e9e9e",
-        _ => "#9e9e9e"
-    };
+    private static string StatusBadgeHex(string status) =>
+        Enum.TryParse<WorkStatus>(status, ignoreCase: true, out var s)
+            ? s switch
+            {
+                WorkStatus.Scheduled => "#2196f3",
+                WorkStatus.InProgress => "#ff9800",
+                WorkStatus.Completed => "#4caf50",
+                WorkStatus.Cancelled => "#f44336",
+                WorkStatus.Pending => "#9e9e9e",
+                _ => "#9e9e9e"
+            }
+            : "#9e9e9e";
 }

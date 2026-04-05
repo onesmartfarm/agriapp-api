@@ -7,10 +7,11 @@ public record LoginRequest(string Email, string Password);
 
 public record LoginResponse(string Token, string Email, string Role, int? CenterId);
 
+/// <summary>List row for GET api/workorders. Status is the API string (e.g. Scheduled), not a numeric JSON enum.</summary>
 public record WorkOrderListItem(
     int Id,
     string Description,
-    WorkStatus Status,
+    string Status,
     DateTime ScheduledStartDate,
     DateTime ScheduledEndDate,
     string? ServiceActivityName,
