@@ -130,7 +130,10 @@
                         _headerCenter = _centerList[0];
                     }
                 }
-                catch { /* snackbar optional */ }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Could not load centers: {ex.Message}", Severity.Warning);
+                }
                 finally
                 {
                     _loadingCenters = false;
@@ -144,7 +147,10 @@
                 {
                     _headerCenter = await CenterService.GetByIdAsync(cid);
                 }
-                catch { /* optional */ }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Could not load center: {ex.Message}", Severity.Warning);
+                }
             }
         }
 
@@ -153,7 +159,10 @@
         {
             _vendorList = await VendorService.GetAllAsync();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load vendors: {ex.Message}", Severity.Warning);
+        }
         finally
         {
             _loadingVendors = false;
@@ -161,17 +170,24 @@
 
         if (!IsCreate && EquipmentId > 0)
         {
-            var eq = await EquipmentService.GetByIdAsync(EquipmentId);
-            if (eq != null)
+            try
             {
-                _form.Name = eq.Name;
-                _form.Category = eq.Category;
-                _form.HourlyRate = eq.HourlyRate;
-                _form.CenterId = eq.CenterId;
-                _form.VendorId = eq.VendorId;
-                _form.PurchaseCost = eq.PurchaseCost;
-                _purchaseDate = eq.PurchaseDate?.ToLocalTime();
-                _editCurrencySymbol = string.IsNullOrWhiteSpace(eq.CurrencySymbol) ? "₹" : eq.CurrencySymbol;
+                var eq = await EquipmentService.GetByIdAsync(EquipmentId);
+                if (eq != null)
+                {
+                    _form.Name = eq.Name;
+                    _form.Category = eq.Category;
+                    _form.HourlyRate = eq.HourlyRate;
+                    _form.CenterId = eq.CenterId;
+                    _form.VendorId = eq.VendorId;
+                    _form.PurchaseCost = eq.PurchaseCost;
+                    _purchaseDate = eq.PurchaseDate?.ToLocalTime();
+                    _editCurrencySymbol = string.IsNullOrWhiteSpace(eq.CurrencySymbol) ? "₹" : eq.CurrencySymbol;
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Could not load equipment: {ex.Message}", Severity.Error);
             }
         }
     }
