@@ -2,26 +2,45 @@
 
 Blazor **WebAssembly** standalone **PWA** — UI and API client only; domain types come from **`AgriApp.Core`** (project reference).
 
+## Dialog lifecycle pattern (required)
+
+Every modal that commits data must follow this contract so parent pages refresh correctly and dialogs close predictably.
+
+1. **Success:** Call **`MudDialog.Close(DialogResult.Ok(true))`** (or another meaningful payload) **after** a successful save/API call — not only snackbar.
+2. **Cancel:** Use **`ButtonType="ButtonType.Button"`** on cancel buttons so they do not submit **`EditForm`**. Call **`MudDialog.Cancel()`** (or **`Close(DialogResult.Cancel())`**).
+3. **Parent:** After **`ShowAsync<TDialog>(...)`**, **`await dialog.Result`** and **only if** the result is **not canceled** (e.g. `result is { Canceled: false }`), **reload the grid/list** (call the same load method used on first paint).
+
+Anti-patterns: closing without **`DialogResult`**, submitting cancel as form post, or parent assuming success without awaiting **`Result**.
+
 ## MudBlazor UI standards
 
 - **Shell:** **`MainLayout.razor`** registers **`MudThemeProvider`** (custom **`_agriTheme`** — green primary `#388e3c`, amber secondary), **`MudPopoverProvider`**, **`MudDialogProvider`**, **`MudSnackbarProvider`**.
 - **Layout:** **`MudLayout`** / **`MudAppBar`** / **`MudDrawer`** / **`MudMainContent`** with **`MudContainer MaxWidth="MaxWidth.ExtraLarge"`** for page body.
 - **Dialogs:** Use **`MudDialog`** with **`DialogContent`** / **`DialogActions`**. **Cancel** and **Close** actions must use **`ButtonType="ButtonType.Button"`** so they do not submit a parent **`EditForm`**. Submit actions use **`ButtonType="ButtonType.Submit"`** with **`form="..."`** linking to the form `id` when the button sits outside the form markup.
 
+## Currency adornment standard
+
+- Prefer **center-aware symbols** on money fields: load **`Center`** (or row DTOs that expose **`CurrencySymbol`**) and use **`@_centerCurrencySymbol`**, **`@headerCenter.CurrencySymbol`**, or **`$"... {sym}..."`** in **`MudNumericField` `Label`**, billing summaries, and read-only rate displays — avoid hard-coding **`₹`** everywhere when the center uses **`$`** or other symbols.
+- Equipment and service activity API responses often include **`CurrencySymbol`** for the owning center; reuse that in quotes and work-order billing previews when available.
+
 ## “No-ID” UI rule (foreign keys)
 
-- For any bound field that is a **foreign key / surrogate id** (property names like **`CustomerId`**, **`EquipmentId`**, **`VendorId`**, **`CenterId`**, or a **`Guid`** reference id such as **`InvoiceId`**): **do not** use **`MudTextField`** / **`MudNumericField`** for raw ids for user selection.
-- **Do** inject the appropriate **`I…Service`**, load options in **`OnInitializedAsync`** (or equivalent), and bind with **`MudSelect`** or searchable **`MudAutocomplete`**, showing **human-readable labels** (e.g. name) while the model holds the **id**.
-- **SuperUser-only** optional center override may still exist in some forms; prefer a center **picker** over a bare numeric id when exposing that choice.
+- For any bound field that is a **foreign key / surrogate id** (e.g. **`CustomerId`**, **`VendorId`**, **`CenterId`**, **`ServiceActivityId`**, **`ImplementId`**, **`TractorId`**, **`EquipmentId`** (inquiries), or a **`Guid`** such as **`InvoiceId`**): **do not** expose raw ids in **`MudTextField`** / **`MudNumericField`** for user selection.
+- **Do** inject the appropriate **`I…Service`**, load options in **`OnInitializedAsync`** (or equivalent), and bind with **`MudSelect`** / **`MudAutocomplete`**, showing **human-readable labels** while the model holds the **id**.
+- **Stage 8 extensions:**
+  - **Service activity** dropdowns: show **activity name** (and optional description elsewhere); do not show **`Id`** in the visible label.
+  - **Customer** dropdowns: show **name** (and optional phone); do not lead with **`Id`**.
+  - **Implement / tractor** dropdowns on work orders: show **equipment name only** (no id, no category/rate clutter in the list item text unless product asks for it).
+- **SuperUser-only** center override: use a **center picker** (`MudSelect`), not a bare numeric id field.
 
 ## HTTP clients and services
 
 - Register and resolve the named **`HttpClient` `"AgriApi"`** via **`IHttpClientFactory`**. All API access goes through **`AgriApp.Web.Services`** interface implementations — **no** raw **`HttpClient`** in `.razor` files.
-- Paths must match **AgriApp.Api** routes exactly (e.g. **`api/workorders`**, not `api/work-orders`).
+- Paths must match **AgriApp.Api** routes exactly (e.g. **`api/workorders`**, **`api/service-activities`**).
 
 ## `Services/ViewModels.cs`
 
-- **All** frontend **request/response DTOs** used by the WASM client should be **`public record`** types in **`Services/ViewModels.cs`** (single file convention for this repo).
+- **All** frontend **request/response DTOs** used by the WASM client should be **`public record`** / request types in **`Services/ViewModels.cs`** (single-file convention for this repo).
 - Do **not** add UI-only DTOs to **`AgriApp.Core`**. Do **not** create a separate **`Models/`** folder for these unless the team explicitly changes policy.
 
 ## Exception shield (user-visible errors)

@@ -77,7 +77,7 @@ public class InvoiceService
                     MidpointRounding.AwayFromZero);
 
                 baseAmount = Math.Round(
-                    serviceLabor + request.AdditionalFees,
+                    serviceLabor + workOrder.TotalMaterialCost + request.AdditionalFees,
                     2,
                     MidpointRounding.AwayFromZero);
             }
