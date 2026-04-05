@@ -16,4 +16,5 @@ public class Customer : ICenterScoped, IAuditable
     public Center Center { get; set; } = null!;
     public ICollection<Inquiry> Inquiries { get; set; } = new List<Inquiry>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+    public ICollection<WorkOrder> WorkOrders { get; set; } = new List<WorkOrder>();
 }

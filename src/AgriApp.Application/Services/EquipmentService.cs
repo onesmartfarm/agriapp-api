@@ -1,3 +1,4 @@
+using AgriApp.Application.DTOs;
 using AgriApp.Core.Entities;
 using AgriApp.Core.Enums;
 using AgriApp.Infrastructure.Repositories;
@@ -13,20 +14,27 @@ public class EquipmentService
         _repo = repo;
     }
 
-    public async Task<List<Equipment>> GetAllAsync()
-        => await _repo.GetAllAsync();
+    public async Task<List<EquipmentApiResponse>> GetAllAsync()
+    {
+        var items = await _repo.GetAllAsync();
+        return items.Select(ToResponse).ToList();
+    }
 
-    public async Task<Equipment?> GetByIdAsync(int id)
-        => await _repo.GetByIdAsync(id);
+    public async Task<EquipmentApiResponse?> GetByIdAsync(int id)
+    {
+        var e = await _repo.GetByIdAsync(id);
+        return e == null ? null : ToResponse(e);
+    }
 
-    public async Task<Equipment> CreateAsync(
+    public async Task<EquipmentApiResponse> CreateAsync(
         string name,
         EquipmentCategory category,
         decimal hourlyRate,
         int centerId,
         int? vendorId = null,
         decimal? purchaseCost = null,
-        DateTime? purchaseDate = null)
+        DateTime? purchaseDate = null,
+        bool isImplement = false)
     {
         var equipment = new Equipment
         {
@@ -37,21 +45,26 @@ public class EquipmentService
             VendorId = vendorId,
             PurchaseCost = purchaseCost,
             PurchaseDate = purchaseDate,
+            IsImplement = isImplement,
             CreatedAt = DateTime.UtcNow
         };
-        return await _repo.CreateAsync(equipment);
+        var created = await _repo.CreateAsync(equipment);
+        var reloaded = await _repo.GetByIdAsync(created.Id)
+            ?? throw new InvalidOperationException("Failed to reload equipment after create.");
+        return ToResponse(reloaded);
     }
 
-    public async Task<Equipment?> UpdateAsync(
+    public async Task<EquipmentApiResponse?> UpdateAsync(
         int id,
         string? name,
         EquipmentCategory? category,
         decimal? hourlyRate,
         int? vendorId = null,
         decimal? purchaseCost = null,
-        DateTime? purchaseDate = null)
+        DateTime? purchaseDate = null,
+        bool? isImplement = null)
     {
-        return await _repo.UpdateAsync(id, equipment =>
+        var updated = await _repo.UpdateAsync(id, equipment =>
         {
             if (name != null) equipment.Name = name;
             if (category.HasValue) equipment.Category = category.Value;
@@ -59,7 +72,11 @@ public class EquipmentService
             if (vendorId.HasValue) equipment.VendorId = vendorId.Value;
             if (purchaseCost.HasValue) equipment.PurchaseCost = purchaseCost.Value;
             if (purchaseDate.HasValue) equipment.PurchaseDate = purchaseDate.Value;
+            if (isImplement.HasValue) equipment.IsImplement = isImplement.Value;
         });
+        if (updated == null) return null;
+        var reloaded = await _repo.GetByIdAsync(updated.Id);
+        return reloaded == null ? null : ToResponse(reloaded);
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -70,5 +87,26 @@ public class EquipmentService
         var gst = GstCalculator.CalculateRental(hourlyRate, hours);
         var commission = CommissionCalculator.Calculate(gst.BaseAmount);
         return (gst, commission);
+    }
+
+    private static EquipmentApiResponse ToResponse(Equipment e)
+    {
+        var sym = string.IsNullOrWhiteSpace(e.Center?.CurrencySymbol) ? "₹" : e.Center.CurrencySymbol;
+        return new EquipmentApiResponse
+        {
+            Id = e.Id,
+            Name = e.Name,
+            Category = e.Category.ToString(),
+            HourlyRate = e.HourlyRate,
+            CenterId = e.CenterId,
+            CenterName = e.Center?.Name ?? string.Empty,
+            CurrencySymbol = sym,
+            VendorId = e.VendorId,
+            PurchaseCost = e.PurchaseCost,
+            PurchaseDate = e.PurchaseDate,
+            IsImplement = e.IsImplement,
+            CreatedAt = e.CreatedAt,
+            UpdatedAt = e.UpdatedAt
+        };
     }
 }

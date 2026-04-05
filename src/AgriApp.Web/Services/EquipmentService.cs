@@ -54,7 +54,8 @@ public class EquipmentService : IEquipmentService
                 request.CenterId,
                 request.VendorId,
                 request.PurchaseCost,
-                request.PurchaseDate
+                request.PurchaseDate,
+                request.IsImplement
             });
 
             if (response.IsSuccessStatusCode)
@@ -85,7 +86,8 @@ public class EquipmentService : IEquipmentService
                 request.HourlyRate,
                 request.VendorId,
                 request.PurchaseCost,
-                request.PurchaseDate
+                request.PurchaseDate,
+                request.IsImplement
             });
 
             if (response.IsSuccessStatusCode)

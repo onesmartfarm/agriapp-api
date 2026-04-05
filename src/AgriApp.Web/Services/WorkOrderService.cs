@@ -18,7 +18,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            return await _http.GetFromJsonAsync<List<WorkOrderListItem>>("api/work-orders")
+            return await _http.GetFromJsonAsync<List<WorkOrderListItem>>("api/workorders")
                    ?? new List<WorkOrderListItem>();
         }
         catch (Exception ex)
@@ -32,7 +32,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            return await _http.GetFromJsonAsync<WorkOrderDetail>($"api/work-orders/{id}");
+            return await _http.GetFromJsonAsync<WorkOrderDetail>($"api/workorders/{id}");
         }
         catch (Exception ex)
         {
@@ -45,17 +45,27 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            var response = await _http.PostAsJsonAsync("api/work-orders", new
+            var response = await _http.PostAsJsonAsync("api/workorders", new
             {
                 request.ResponsibleUserId,
-                request.EquipmentId,
+                request.ServiceActivityId,
+                request.ImplementId,
+                request.TractorId,
                 request.InquiryId,
+                request.CustomerId,
                 request.CenterId,
                 request.Description,
                 request.Type,
                 ScheduledStartDate = request.ScheduledStartDate.ToUniversalTime(),
                 ScheduledEndDate = request.ScheduledEndDate.ToUniversalTime(),
-                request.TotalMaterialCost
+                request.TotalMaterialCost,
+                TimeLogs = request.TimeLogs?.Select(t => new
+                {
+                    StartTime = t.StartTime.ToUniversalTime(),
+                    EndTime = t.EndTime.ToUniversalTime(),
+                    t.LogType,
+                    t.Notes
+                }).ToList()
             });
 
             if (response.IsSuccessStatusCode)
@@ -75,11 +85,34 @@ public class WorkOrderService : IWorkOrderService
         }
     }
 
+    public async Task<(bool Success, string? Error, WorkOrderDetail? WorkOrder)> UpdateAsync(int id, WorkOrderPatchRequest request)
+    {
+        try
+        {
+            var response = await _http.PatchAsJsonAsync($"api/workorders/{id}", new { request.CustomerId });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var wo = await response.Content.ReadFromJsonAsync<WorkOrderDetail>();
+                return (true, null, wo);
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Update work order {Id} failed: {Error}", id, error);
+            return (false, error, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception updating work order {Id}", id);
+            return (false, "An unexpected error occurred while updating the work order.", null);
+        }
+    }
+
     public async Task<(bool Success, string? Error, WorkOrderDetail? WorkOrder)> UpdateStatusAsync(int id, string status)
     {
         try
         {
-            var response = await _http.PatchAsJsonAsync($"api/work-orders/{id}/status", new { Status = status });
+            var response = await _http.PatchAsJsonAsync($"api/workorders/{id}/status", new { Status = status });
 
             if (response.IsSuccessStatusCode)
             {
@@ -102,7 +135,7 @@ public class WorkOrderService : IWorkOrderService
     {
         try
         {
-            var response = await _http.DeleteAsync($"api/work-orders/{id}");
+            var response = await _http.DeleteAsync($"api/workorders/{id}");
             if (response.IsSuccessStatusCode)
                 return (true, null);
 

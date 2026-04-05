@@ -31,8 +31,49 @@ public sealed class PaymentServiceTests
             .Options;
 
         _db = new AgriDbContext(options, SuperUser());
+        SeedInvoiceLookupGraph();
         _invoiceService = new InvoiceService(_db);
         _paymentService = new PaymentService(_db);
+    }
+
+    private void SeedInvoiceLookupGraph()
+    {
+        _db.Centers.Add(new Center
+        {
+            Id = 1,
+            Name = "Test Center",
+            Location = "Test",
+            CurrencySymbol = "₹",
+            TimeZoneId = "India Standard Time",
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Customers.Add(new Customer
+        {
+            Id = 1,
+            Name = "Test Customer",
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Users.Add(new User
+        {
+            Id = 1,
+            Name = "Staff",
+            Email = $"staff-{Guid.NewGuid():N}@test.com",
+            PasswordHash = "x",
+            Role = Role.Staff,
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Equipment.Add(new Equipment
+        {
+            Id = 1,
+            Name = "Tractor",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 100m,
+            CenterId = 1,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.SaveChanges();
     }
 
     [TestCleanup]
@@ -43,7 +84,7 @@ public sealed class PaymentServiceTests
     {
         _db.WorkOrders.Add(new WorkOrder
         {
-            Id = workOrderId, CenterId = 1, EquipmentId = 1, ResponsibleUserId = 1, InquiryId = 1,
+            Id = workOrderId, CenterId = 1, ImplementId = 1, ResponsibleUserId = 1, InquiryId = 1,
             ScheduledStartDate = DateTime.UtcNow.AddDays(-2),
             ScheduledEndDate = DateTime.UtcNow.AddDays(-1),
             Status = WorkStatus.Completed,
@@ -164,7 +205,7 @@ public sealed class PaymentServiceTests
     {
         _db.WorkOrders.Add(new WorkOrder
         {
-            Id = 7, CenterId = 1, EquipmentId = 1, ResponsibleUserId = 1, InquiryId = 1,
+            Id = 7, CenterId = 1, ImplementId = 1, ResponsibleUserId = 1, InquiryId = 1,
             ScheduledStartDate = DateTime.UtcNow.AddDays(-2),
             ScheduledEndDate = DateTime.UtcNow.AddDays(-1),
             Status = WorkStatus.Completed,

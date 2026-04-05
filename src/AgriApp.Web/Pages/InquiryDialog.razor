@@ -1,8 +1,11 @@
 @using AgriApp.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IInquiryService InquiryService
 @inject IEquipmentService EquipmentService
 @inject IUserService UserService
 @inject ICustomerService CustomerService
+@inject ICenterService CenterService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -36,7 +39,7 @@
                         @foreach (var eq in _equipmentList)
                         {
                             <MudSelectItem T="int" Value="@eq.Id">
-                                @eq.Name (@eq.Category · ₹@eq.HourlyRate.ToString("N0")/hr)
+                                @eq.Name (@eq.Category · @eq.CurrencySymbol@eq.HourlyRate.ToString("N0")/hr)
                             </MudSelectItem>
                         }
                     </MudSelect>
@@ -55,9 +58,19 @@
                         }
                     </MudSelect>
 
-                    <MudNumericField @bind-Value="_createForm.CenterId"
-                                     Label="Center ID (optional)"
-                                     FullWidth="true" />
+                    @if (_isSuperUser)
+                    {
+                        <MudSelect T="int?" @bind-Value="_createForm.CenterId"
+                                   Label="Center"
+                                   FullWidth="true"
+                                   Disabled="_loadingLookups">
+                            <MudSelectItem T="int?" Value="@((int?)null)">— Use token default —</MudSelectItem>
+                            @foreach (var c in _centerList)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
 
                     <ValidationSummary />
                     @if (!string.IsNullOrEmpty(_error))
@@ -112,7 +125,7 @@
 
 @code {
     [CascadingParameter]
-    public dynamic? MudDialog { get; set; }
+    public IMudDialogInstance? MudDialog { get; set; }
 
     [Parameter]
     public bool IsCreate { get; set; } = true;
@@ -128,6 +141,8 @@
     private List<CustomerResponse> _customerList = new();
     private List<EquipmentResponse> _equipmentList = new();
     private List<UserResponse> _salesList = new();
+    private List<CenterResponse> _centerList = new();
+    private bool _isSuperUser;
     private bool _saving = false;
     private bool _loadingLookups = false;
     private string? _error;
@@ -144,13 +159,20 @@
         _loadingLookups = true;
         try
         {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            _isSuperUser = auth.User.IsInRole("SuperUser");
+            if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var centerFromToken) && centerFromToken > 0)
+                _createForm.CenterId = centerFromToken;
+
             var customerTask = CustomerService.GetAllAsync();
             var eqTask = EquipmentService.GetAllAsync();
             var userTask = UserService.GetAllAsync();
-            await Task.WhenAll(customerTask, eqTask, userTask);
-            _customerList = customerTask.Result;
-            _equipmentList = eqTask.Result;
-            _salesList = userTask.Result
+            var centerTask = _isSuperUser ? CenterService.GetAllAsync() : Task.FromResult(new List<CenterResponse>());
+            await Task.WhenAll(customerTask, eqTask, userTask, centerTask);
+            _customerList = await customerTask;
+            _equipmentList = await eqTask;
+            _centerList = await centerTask;
+            _salesList = (await userTask)
                 .Where(u => u.Role is "Sales" or "Manager" or "SuperUser")
                 .ToList();
         }
@@ -174,7 +196,7 @@
             if (success)
             {
                 Snackbar.Add("Inquiry created.", Severity.Success);
-                if (MudDialog != null) MudDialog.Close();
+                MudDialog?.Close(DialogResult.Ok(true));
             }
             else
             {
@@ -198,7 +220,7 @@
             if (success)
             {
                 Snackbar.Add("Status updated.", Severity.Success);
-                if (MudDialog != null) MudDialog.Close();
+                MudDialog?.Close(DialogResult.Ok(true));
             }
             else
             {
@@ -212,8 +234,5 @@
         }
     }
 
-    private void Cancel()
-    {
-        try { if (MudDialog != null) MudDialog.Cancel(); } catch { }
-    }
+    private void Cancel() => MudDialog?.Cancel();
 }

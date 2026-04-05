@@ -17,8 +17,34 @@ public class InquiryRepository
     public async Task<List<Inquiry>> GetAllAsync()
         => await _context.Inquiries.AsNoTracking().ToListAsync();
 
+    public async Task<List<Inquiry>> GetAllWithNavigationsAsync()
+        => await _context.Inquiries
+            .AsNoTracking()
+            .Include(i => i.Customer)
+            .Include(i => i.Equipment)
+            .Include(i => i.Salesperson)
+            .ToListAsync();
+
+    public async Task<Dictionary<int, string>> GetCenterNamesAsync(IEnumerable<int> centerIds)
+    {
+        var ids = centerIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, string>();
+        return await _context.Centers
+            .AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.Name);
+    }
+
     public async Task<Inquiry?> GetByIdAsync(int id)
         => await _context.Inquiries.FindAsync(id);
+
+    public async Task<Inquiry?> GetByIdWithNavigationsAsync(int id)
+        => await _context.Inquiries
+            .AsNoTracking()
+            .Include(i => i.Customer)
+            .Include(i => i.Equipment)
+            .Include(i => i.Salesperson)
+            .FirstOrDefaultAsync(i => i.Id == id);
 
     public async Task<Inquiry> CreateAsync(Inquiry inquiry)
     {

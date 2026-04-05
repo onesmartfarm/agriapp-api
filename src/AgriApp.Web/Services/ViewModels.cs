@@ -13,8 +13,11 @@ public record WorkOrderListItem(
     WorkStatus Status,
     DateTime ScheduledStartDate,
     DateTime ScheduledEndDate,
-    string? EquipmentName,
-    decimal TotalMaterialCost);
+    string? ServiceActivityName,
+    string? ImplementName,
+    string? TractorName,
+    decimal TotalMaterialCost,
+    string CurrencySymbol);
 
 public record AttendanceClockRequest(
     string Action,
@@ -45,9 +48,12 @@ public record EquipmentResponse(
     string Category,
     decimal HourlyRate,
     int CenterId,
+    string CenterName,
+    string CurrencySymbol,
     int? VendorId,
     decimal? PurchaseCost,
     DateTime? PurchaseDate,
+    bool IsImplement,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
@@ -76,6 +82,8 @@ public record CenterResponse(
     int Id,
     string Name,
     string? Location,
+    string CurrencySymbol,
+    string TimeZoneId,
     int? AdminUserId);
 
 public record QuoteGstBreakdown(
@@ -90,6 +98,43 @@ public record QuoteCommissionResult(
     decimal CommissionRate,
     decimal CommissionAmount,
     decimal NetToCompany);
+
+public record ServiceActivityRow(
+    int Id,
+    string Name,
+    string Description,
+    decimal BaseRatePerHour,
+    int CenterId,
+    string CenterName,
+    string CurrencySymbol,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
+
+public record CreateServiceActivityForm
+{
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(2000)]
+    public string Description { get; set; } = string.Empty;
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "Rate must be positive")]
+    public decimal BaseRatePerHour { get; set; } = 1m;
+
+    public int CenterId { get; set; } = 1;
+}
+
+public record UpdateServiceActivityForm
+{
+    [MaxLength(200)]
+    public string? Name { get; set; }
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "Rate must be positive")]
+    public decimal? BaseRatePerHour { get; set; }
+}
 
 public record EquipmentQuoteResult(
     decimal Hours,
@@ -111,6 +156,8 @@ public record CreateEquipmentRequest
     public int? VendorId { get; set; }
     public decimal? PurchaseCost { get; set; }
     public DateTime? PurchaseDate { get; set; }
+
+    public bool IsImplement { get; set; }
 }
 
 public record UpdateEquipmentRequest
@@ -124,6 +171,8 @@ public record UpdateEquipmentRequest
     public int? VendorId { get; set; }
     public decimal? PurchaseCost { get; set; }
     public DateTime? PurchaseDate { get; set; }
+
+    public bool? IsImplement { get; set; }
 }
 
 public record CreateCustomerRequest
@@ -171,10 +220,14 @@ public record CreateVendorRequest
 public record InquiryResponse(
     int Id,
     int CustomerId,
+    string CustomerName,
     int EquipmentId,
+    string EquipmentName,
     int SalespersonId,
+    string SalespersonName,
     string Status,
     int CenterId,
+    string CenterName,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
@@ -205,6 +258,9 @@ public record InvoiceResponse(
     int CenterId,
     int WorkOrderId,
     int CustomerId,
+    string CustomerName,
+    string CenterName,
+    string CurrencySymbol,
     decimal BaseAmount,
     decimal GstAmount,
     decimal TotalAmount,
@@ -276,22 +332,33 @@ public record WorkOrderTimeLog(
 public record WorkOrderDetail(
     int Id,
     int CenterId,
+    int? CustomerId,
     int? InquiryId,
-    int? EquipmentId,
+    int? ServiceActivityId,
+    int? ImplementId,
+    int? TractorId,
     int ResponsibleUserId,
     string Description,
     string Type,
     string Status,
     DateTime ScheduledStartDate,
     DateTime ScheduledEndDate,
-    decimal TotalMaterialCost);
+    decimal TotalMaterialCost,
+    string? ServiceActivityName,
+    string? ImplementName,
+    string? TractorName,
+    string CurrencySymbol);
 
 public record WorkOrderFormRequest
 {
     [Required, Range(1, int.MaxValue, ErrorMessage = "Responsible User ID is required")]
     public int ResponsibleUserId { get; set; }
 
-    public int? EquipmentId { get; set; }
+    public int? ServiceActivityId { get; set; }
+
+    public int? ImplementId { get; set; }
+
+    public int? TractorId { get; set; }
 
     public int? InquiryId { get; set; }
 
@@ -313,7 +380,18 @@ public record WorkOrderFormRequest
 
     [Range(0, double.MaxValue, ErrorMessage = "Cost cannot be negative")]
     public decimal TotalMaterialCost { get; set; }
+
+    /// <summary>Timeline rows persisted server-side; invoice uses only Working-type logs for rental hours.</summary>
+    public List<WorkOrderTimeLogRequest>? TimeLogs { get; set; }
 }
+
+public record WorkOrderTimeLogRequest(
+    DateTime StartTime,
+    DateTime EndTime,
+    string LogType,
+    string? Notes);
+
+public record WorkOrderPatchRequest(int? CustomerId);
 
 public record WorkOrderStatusUpdateRequest
 {

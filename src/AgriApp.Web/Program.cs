@@ -71,6 +71,12 @@ builder.Services.AddScoped<IVendorService>(sp =>
 builder.Services.AddScoped<ICenterService>(sp =>
     new CenterService(Api(sp), sp.GetRequiredService<ILogger<CenterService>>()));
 
+builder.Services.AddScoped<IServiceActivityService>(sp =>
+    new ServiceActivityService(Api(sp), sp.GetRequiredService<ILogger<ServiceActivityService>>()));
+
+builder.Services.AddScoped<ICalendarService>(sp =>
+    new CalendarService(Api(sp), sp.GetRequiredService<ILogger<CalendarService>>()));
+
 // ── Localization default culture ─────────────────────────────────────────────
 CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
 CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");

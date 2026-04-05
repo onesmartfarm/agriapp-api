@@ -16,15 +16,24 @@ public class InvoiceService
     }
 
     public async Task<List<InvoiceResponse>> GetAllAsync()
-        => await _db.Invoices
+    {
+        var rows = await _db.Invoices
             .AsNoTracking()
-            .Select(i => MapToResponse(i))
+            .Include(i => i.Center)
+            .Include(i => i.Customer)
+            .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
+        return rows.Select(ToInvoiceResponse).ToList();
+    }
 
     public async Task<InvoiceResponse?> GetByIdAsync(Guid id)
     {
-        var invoice = await _db.Invoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
-        return invoice == null ? null : MapToResponse(invoice);
+        var i = await _db.Invoices
+            .AsNoTracking()
+            .Include(x => x.Center)
+            .Include(x => x.Customer)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        return i == null ? null : ToInvoiceResponse(i);
     }
 
     public async Task<InvoiceResponse> GenerateInvoiceFromWorkOrderAsync(
@@ -32,6 +41,8 @@ public class InvoiceService
     {
         var workOrder = await _db.WorkOrders
             .AsNoTracking()
+            .Include(w => w.ServiceActivity)
+            .Include(w => w.TimeLogs)
             .FirstOrDefaultAsync(w => w.Id == request.WorkOrderId)
             ?? throw new KeyNotFoundException($"WorkOrder {request.WorkOrderId} not found.");
 
@@ -47,8 +58,44 @@ public class InvoiceService
             throw new InvalidOperationException(
                 $"An invoice has already been generated for WorkOrder {request.WorkOrderId}.");
 
-        var baseAmount = Math.Round(
-            workOrder.TotalMaterialCost + request.AdditionalFees, 2, MidpointRounding.AwayFromZero);
+        decimal baseAmount;
+        if (workOrder.TimeLogs.Count > 0)
+        {
+            var workingHours = workOrder.TimeLogs
+                .Where(t => t.LogType == WorkTimeLogType.Working)
+                .Sum(t => (decimal)(t.EndTime - t.StartTime).TotalHours);
+
+            if (workingHours > 0)
+            {
+                if (workOrder.ServiceActivityId == null || workOrder.ServiceActivity == null)
+                    throw new InvalidOperationException(
+                        "Invoice generation requires a service activity on the work order when billable (Working) time logs are present.");
+
+                var serviceLabor = Math.Round(
+                    workingHours * workOrder.ServiceActivity.BaseRatePerHour,
+                    2,
+                    MidpointRounding.AwayFromZero);
+
+                baseAmount = Math.Round(
+                    serviceLabor + workOrder.TotalMaterialCost + request.AdditionalFees,
+                    2,
+                    MidpointRounding.AwayFromZero);
+            }
+            else
+            {
+                baseAmount = Math.Round(
+                    workOrder.TotalMaterialCost + request.AdditionalFees,
+                    2,
+                    MidpointRounding.AwayFromZero);
+            }
+        }
+        else
+        {
+            baseAmount = Math.Round(
+                workOrder.TotalMaterialCost + request.AdditionalFees,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
 
         var gst = GstCalculator.Calculate(baseAmount);
 
@@ -70,7 +117,8 @@ public class InvoiceService
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync();
 
-        return MapToResponse(invoice);
+        return await GetByIdAsync(invoice.Id)
+            ?? throw new InvalidOperationException("Failed to load invoice after create.");
     }
 
     public async Task<InvoiceResponse?> IssueAsync(Guid id)
@@ -86,7 +134,7 @@ public class InvoiceService
         invoice.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return MapToResponse(invoice);
+        return await GetByIdAsync(id);
     }
 
     public async Task MarkOverdueAsync()
@@ -107,20 +155,27 @@ public class InvoiceService
             await _db.SaveChangesAsync();
     }
 
-    internal static InvoiceResponse MapToResponse(Invoice i) => new()
+    private static InvoiceResponse ToInvoiceResponse(Invoice i)
     {
-        Id = i.Id,
-        CenterId = i.CenterId,
-        WorkOrderId = i.WorkOrderId,
-        CustomerId = i.CustomerId,
-        BaseAmount = i.BaseAmount,
-        GstAmount = i.GstAmount,
-        TotalAmount = i.TotalAmount,
-        AmountPaid = i.AmountPaid,
-        BalanceDue = Math.Round(i.TotalAmount - i.AmountPaid, 2, MidpointRounding.AwayFromZero),
-        DueDate = i.DueDate,
-        Status = i.Status.ToString(),
-        CreatedAt = i.CreatedAt,
-        UpdatedAt = i.UpdatedAt
-    };
+        var sym = string.IsNullOrWhiteSpace(i.Center?.CurrencySymbol) ? "₹" : i.Center.CurrencySymbol;
+        return new InvoiceResponse
+        {
+            Id = i.Id,
+            CenterId = i.CenterId,
+            WorkOrderId = i.WorkOrderId,
+            CustomerId = i.CustomerId,
+            CustomerName = i.Customer?.Name ?? string.Empty,
+            CenterName = i.Center?.Name ?? string.Empty,
+            CurrencySymbol = sym,
+            BaseAmount = i.BaseAmount,
+            GstAmount = i.GstAmount,
+            TotalAmount = i.TotalAmount,
+            AmountPaid = i.AmountPaid,
+            BalanceDue = Math.Round(i.TotalAmount - i.AmountPaid, 2, MidpointRounding.AwayFromZero),
+            DueDate = i.DueDate,
+            Status = i.Status.ToString(),
+            CreatedAt = i.CreatedAt,
+            UpdatedAt = i.UpdatedAt
+        };
+    }
 }

@@ -9,6 +9,7 @@ public class Invoice : ICenterScoped, IAuditable
 
     /// <summary>FK → centers.Id (int, matches existing PK type)</summary>
     public int CenterId { get; set; }
+    public Center Center { get; set; } = null!;
 
     /// <summary>FK → work_orders.Id (int, matches existing PK type)</summary>
     public int WorkOrderId { get; set; }

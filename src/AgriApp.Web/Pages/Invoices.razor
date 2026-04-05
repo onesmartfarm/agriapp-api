@@ -36,18 +36,43 @@
                                 </CellTemplate>
                             </TemplateColumn>
                             <PropertyColumn Property="x => x.WorkOrderId" Title="Work Order" Sortable="true" />
-                            <PropertyColumn Property="x => x.CustomerId" Title="Customer" Sortable="true" />
-                            <PropertyColumn Property="x => x.BaseAmount" Title="Base (₹)" Format="N2" Sortable="true" />
-                            <PropertyColumn Property="x => x.GstAmount" Title="GST (₹)" Format="N2" Sortable="true" />
-                            <PropertyColumn Property="x => x.TotalAmount" Title="Total (₹)" Format="N2" Sortable="true" />
-                            <PropertyColumn Property="x => x.AmountPaid" Title="Paid (₹)" Format="N2" Sortable="true" />
-                            <PropertyColumn Property="x => x.BalanceDue" Title="Balance (₹)" Format="N2" Sortable="true">
+                            <TemplateColumn Title="Customer" Sortable="true" SortBy="@(x => x.CustomerName)">
+                                <CellTemplate Context="custCtx">
+                                    @custCtx.Item.CustomerName
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Center" Sortable="true" SortBy="@(x => x.CenterName)">
+                                <CellTemplate Context="cenCtx">
+                                    @cenCtx.Item.CenterName
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Base" Sortable="true" SortBy="@(x => x.BaseAmount)">
+                                <CellTemplate Context="bCtx">
+                                    @bCtx.Item.CurrencySymbol @bCtx.Item.BaseAmount.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="GST" Sortable="true" SortBy="@(x => x.GstAmount)">
+                                <CellTemplate Context="gCtx">
+                                    @gCtx.Item.CurrencySymbol @gCtx.Item.GstAmount.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Total" Sortable="true" SortBy="@(x => x.TotalAmount)">
+                                <CellTemplate Context="tCtx">
+                                    @tCtx.Item.CurrencySymbol @tCtx.Item.TotalAmount.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Paid" Sortable="true" SortBy="@(x => x.AmountPaid)">
+                                <CellTemplate Context="pCtx">
+                                    @pCtx.Item.CurrencySymbol @pCtx.Item.AmountPaid.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Balance" Sortable="true" SortBy="@(x => x.BalanceDue)">
                                 <CellTemplate Context="balCtx">
                                     <MudText Color="@(balCtx.Item.BalanceDue > 0 ? Color.Error : Color.Success)">
-                                        ₹ @balCtx.Item.BalanceDue.ToString("N2")
+                                        @balCtx.Item.CurrencySymbol @balCtx.Item.BalanceDue.ToString("N2")
                                     </MudText>
                                 </CellTemplate>
-                            </PropertyColumn>
+                            </TemplateColumn>
                             <PropertyColumn Property="x => x.DueDate" Title="Due Date" Format="yyyy-MM-dd" Sortable="true" />
                             <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
                                 <CellTemplate Context="stCtx">
@@ -114,7 +139,7 @@
     {
         var dialog = await DialogService.ShowAsync<InvoiceGenerateDialog>("Generate Invoice from Work Order");
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadInvoices();
     }
 
@@ -145,11 +170,12 @@
         var parameters = new DialogParameters<PaymentDialog>
         {
             { x => x.InvoiceId, invoice.Id },
-            { x => x.BalanceDue, invoice.BalanceDue }
+            { x => x.BalanceDue, invoice.BalanceDue },
+            { x => x.CurrencySymbol, invoice.CurrencySymbol }
         };
         var dialog = await DialogService.ShowAsync<PaymentDialog>("Record Payment", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadInvoices();
     }
 

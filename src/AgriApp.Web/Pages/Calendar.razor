@@ -1,6 +1,8 @@
 @page "/calendar"
 @using Microsoft.AspNetCore.Components.Authorization
 @using AgriApp.Web.Services
+@inject ICalendarService CalendarService
+@inject ISnackbar Snackbar
 
 <AuthorizeView Roles="Supervisor,Manager,SuperUser">
     <Authorized>
@@ -58,9 +60,6 @@
 </AuthorizeView>
 
 @code {
-    [Inject]
-    private IWorkOrderService WorkOrderService { get; set; } = null!;
-
     private List<CapacityScheduleItem>? _scheduleItems;
     private bool _loading = false;
 
@@ -74,13 +73,27 @@
         _loading = true;
         try
         {
-            // TODO: Implement GetCenterCapacityAsync in IWorkOrderService
-            // _scheduleItems = await WorkOrderService.GetCenterCapacityAsync();
-            _scheduleItems = new List<CapacityScheduleItem>();
+            // Calculate current month's date range
+            var today = DateTime.UtcNow;
+            var startOfMonth = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var endOfMonth = startOfMonth.AddMonths(1);
+
+            _scheduleItems = await CalendarService.GetCenterCapacityAsync(startOfMonth, endOfMonth);
+
+            if (_scheduleItems.Count == 0)
+            {
+                Snackbar.Add("No schedule data available for this month.", Severity.Info);
+            }
+        }
+        catch (ApplicationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _logger?.LogError(ex, "Failed to load capacity data");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading capacity data: {ex.Message}");
+            Snackbar.Add("An unexpected error occurred while loading calendar data.", Severity.Error);
+            _logger?.LogError(ex, "Unexpected error loading capacity data");
         }
         finally
         {
@@ -104,10 +117,6 @@
         _ => "#4caf50"            // Green for under-utilized
     };
 
-    public record CapacityScheduleItem(
-        DateTime Date,
-        string? EquipmentName,
-        int WorkOrderCount,
-        double TotalDurationHours,
-        double? UtilizationPercentage);
+    [Inject]
+    private ILogger<Calendar> _logger { get; set; } = null!;
 }

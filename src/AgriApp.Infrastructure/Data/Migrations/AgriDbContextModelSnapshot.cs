@@ -119,6 +119,11 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<string>("CurrencySymbol")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -128,6 +133,11 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -254,6 +264,11 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<bool>("IsImplement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -279,6 +294,45 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.HasIndex("VendorId");
 
                     b.ToTable("equipment", (string)null);
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.ServiceActivity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("BaseRatePerHour")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CenterId");
+
+                    b.ToTable("service_activities", (string)null);
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Inquiry", b =>
@@ -586,14 +640,20 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("EquipmentId")
+                    b.Property<int?>("ImplementId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("InquiryId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TractorId")
                         .HasColumnType("integer");
 
                     b.Property<int>("ResponsibleUserId")
@@ -605,6 +665,9 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("ScheduledStartDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ServiceActivityId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -623,18 +686,69 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EquipmentId")
-                        .HasDatabaseName("IX_WorkOrders_EquipmentId");
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("ImplementId")
+                        .HasDatabaseName("IX_WorkOrders_ImplementId");
 
                     b.HasIndex("InquiryId");
 
                     b.HasIndex("ResponsibleUserId")
                         .HasDatabaseName("IX_WorkOrders_ResponsibleUserId");
 
+                    b.HasIndex("ServiceActivityId");
+
+                    b.HasIndex("TractorId")
+                        .HasDatabaseName("IX_WorkOrders_TractorId");
+
                     b.HasIndex("CenterId", "ScheduledStartDate", "ScheduledEndDate")
                         .HasDatabaseName("IX_WorkOrders_CenterId_Schedule");
 
                     b.ToTable("work_orders", (string)null);
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.WorkOrderTimeLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LogType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("WorkOrderId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkOrderId")
+                        .HasDatabaseName("IX_WorkOrderTimeLogs_WorkOrderId");
+
+                    b.ToTable("work_order_time_logs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkOrderTimeLogs_EndTimeAfterStartTime", "\"EndTime\" > \"StartTime\"");
+                        });
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Attendance", b =>
@@ -751,6 +865,12 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("AgriApp.Core.Entities.Invoice", b =>
                 {
+                    b.HasOne("AgriApp.Core.Entities.Center", "Center")
+                        .WithMany("Invoices")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AgriApp.Core.Entities.Customer", "Customer")
                         .WithMany("Invoices")
                         .HasForeignKey("CustomerId")
@@ -762,6 +882,8 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .HasForeignKey("WorkOrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Center");
 
                     b.Navigation("Customer");
 
@@ -819,16 +941,48 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("Center");
                 });
 
+            modelBuilder.Entity("AgriApp.Core.Entities.ServiceActivity", b =>
+                {
+                    b.HasOne("AgriApp.Core.Entities.Center", "Center")
+                        .WithMany("ServiceActivities")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Center");
+                });
+
             modelBuilder.Entity("AgriApp.Core.Entities.WorkOrder", b =>
                 {
-                    b.HasOne("AgriApp.Core.Entities.Equipment", "Equipment")
+                    b.HasOne("AgriApp.Core.Entities.Center", "Center")
                         .WithMany("WorkOrders")
-                        .HasForeignKey("EquipmentId")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AgriApp.Core.Entities.Customer", "Customer")
+                        .WithMany("WorkOrders")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AgriApp.Core.Entities.Equipment", "Implement")
+                        .WithMany("WorkOrdersAsImplement")
+                        .HasForeignKey("ImplementId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("AgriApp.Core.Entities.Inquiry", "Inquiry")
                         .WithMany()
                         .HasForeignKey("InquiryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AgriApp.Core.Entities.ServiceActivity", "ServiceActivity")
+                        .WithMany("WorkOrders")
+                        .HasForeignKey("ServiceActivityId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("AgriApp.Core.Entities.Equipment", "Tractor")
+                        .WithMany("WorkOrdersAsTractor")
+                        .HasForeignKey("TractorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("AgriApp.Core.Entities.User", "ResponsibleUser")
@@ -837,11 +991,30 @@ namespace AgriApp.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Equipment");
+                    b.Navigation("Center");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Implement");
 
                     b.Navigation("Inquiry");
 
                     b.Navigation("ResponsibleUser");
+
+                    b.Navigation("ServiceActivity");
+
+                    b.Navigation("Tractor");
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.WorkOrderTimeLog", b =>
+                {
+                    b.HasOne("AgriApp.Core.Entities.WorkOrder", "WorkOrder")
+                        .WithMany("TimeLogs")
+                        .HasForeignKey("WorkOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkOrder");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Center", b =>
@@ -850,9 +1023,15 @@ namespace AgriApp.Infrastructure.Data.Migrations
 
                     b.Navigation("Equipment");
 
+                    b.Navigation("Invoices");
+
+                    b.Navigation("ServiceActivities");
+
                     b.Navigation("Users");
 
                     b.Navigation("Vendors");
+
+                    b.Navigation("WorkOrders");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Customer", b =>
@@ -860,13 +1039,17 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("Inquiries");
 
                     b.Navigation("Invoices");
+
+                    b.Navigation("WorkOrders");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Equipment", b =>
                 {
                     b.Navigation("Inquiries");
 
-                    b.Navigation("WorkOrders");
+                    b.Navigation("WorkOrdersAsImplement");
+
+                    b.Navigation("WorkOrdersAsTractor");
                 });
 
             modelBuilder.Entity("AgriApp.Core.Entities.Invoice", b =>
@@ -881,9 +1064,19 @@ namespace AgriApp.Infrastructure.Data.Migrations
                     b.Navigation("SalesInquiries");
                 });
 
+            modelBuilder.Entity("AgriApp.Core.Entities.ServiceActivity", b =>
+                {
+                    b.Navigation("WorkOrders");
+                });
+
             modelBuilder.Entity("AgriApp.Core.Entities.Vendor", b =>
                 {
                     b.Navigation("Equipment");
+                });
+
+            modelBuilder.Entity("AgriApp.Core.Entities.WorkOrder", b =>
+                {
+                    b.Navigation("TimeLogs");
                 });
 #pragma warning restore 612, 618
         }

@@ -32,6 +32,9 @@ public class InvoiceResponse
     public int CenterId { get; set; }
     public int WorkOrderId { get; set; }
     public int CustomerId { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string CenterName { get; set; } = string.Empty;
+    public string CurrencySymbol { get; set; } = "₹";
     public decimal BaseAmount { get; set; }
     public decimal GstAmount { get; set; }
     public decimal TotalAmount { get; set; }

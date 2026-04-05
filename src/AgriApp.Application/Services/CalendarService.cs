@@ -7,7 +7,8 @@ public class CapacitySlot
 {
     public int WorkOrderId { get; set; }
     public int CenterId { get; set; }
-    public int? EquipmentId { get; set; }
+    public int? ImplementId { get; set; }
+    public int? TractorId { get; set; }
     public int ResponsibleUserId { get; set; }
     public string Description { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
@@ -45,7 +46,8 @@ public class CalendarService
             {
                 WorkOrderId = w.Id,
                 CenterId = w.CenterId,
-                EquipmentId = w.EquipmentId,
+                ImplementId = w.ImplementId,
+                TractorId = w.TractorId,
                 ResponsibleUserId = w.ResponsibleUserId,
                 Description = w.Description,
                 Type = w.Type.ToString(),

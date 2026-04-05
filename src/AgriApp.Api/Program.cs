@@ -86,6 +86,7 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<VendorService>();
+builder.Services.AddScoped<ServiceActivityService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -174,66 +175,165 @@ static async Task SeedDatabase(WebApplication app)
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AgriDbContext>();
 
-    if (await db.Centers.AnyAsync()) return;
+    // Idempotent: existing DBs that already had centers (e.g. older seed) still get vendors/customers/equipment/users.
+    var sangola = await EnsureCenterAsync(db,
+        "Sangola Agri-Center",
+        "Sangola, Maharashtra, India",
+        "₹",
+        "India Standard Time");
+    var edison = await EnsureCenterAsync(db,
+        "Edison NJ Hub",
+        "Edison, NJ, USA",
+        "$",
+        "Eastern Standard Time");
+    await db.SaveChangesAsync();
+
+    await EnsureVendorAsync(db, "John Deere Sangola", sangola.Id);
+    await EnsureVendorAsync(db, "Mazda Financial Services (Edison)", edison.Id);
+    await db.SaveChangesAsync();
+
+    await EnsureCustomerAsync(db, "Bafna Farms (Pune)", sangola.Id);
+    await EnsureCustomerAsync(db, "Edison Property Management", edison.Id);
+    await db.SaveChangesAsync();
+
+    await EnsureServiceActivityAsync(db, "Rotavation", "Field rotavation service", 800m, sangola.Id);
+    await EnsureServiceActivityAsync(db, "Cultivation", "Soil cultivation service", 700m, sangola.Id);
+    await EnsureServiceActivityAsync(db, "Sowing", "Sowing service", 900m, sangola.Id);
+    await db.SaveChangesAsync();
+
+    var deereVendorId = (await db.Vendors.IgnoreQueryFilters().AsNoTracking()
+        .FirstAsync(v => v.Name == "John Deere Sangola" && v.CenterId == sangola.Id)).Id;
+    var mazdaVendorId = (await db.Vendors.IgnoreQueryFilters().AsNoTracking()
+        .FirstAsync(v => v.Name == "Mazda Financial Services (Edison)" && v.CenterId == edison.Id)).Id;
+
+    await EnsureEquipmentAsync(db, "John Deere 5405 Tractor", EquipmentCategory.Tractor, 1500.00m,
+        sangola.Id, deereVendorId, isImplement: false);
+    await EnsureEquipmentAsync(db, "Heavy Rotavator (7 ft)", EquipmentCategory.Tractor, 400.00m,
+        sangola.Id, deereVendorId, isImplement: true);
+    await EnsureEquipmentAsync(db, "2025 Mazda CX-90 PHEV", EquipmentCategory.Vehicle, 85.00m,
+        edison.Id, mazdaVendorId, isImplement: false);
+    await db.SaveChangesAsync();
+
+    await EnsureDemoUsersAsync(db, sangola.Id, edison.Id);
+    await db.SaveChangesAsync();
+}
+
+static async Task<Center> EnsureCenterAsync(
+    AgriDbContext db,
+    string name,
+    string location,
+    string currencySymbol,
+    string timeZoneId)
+{
+    var existing = await db.Centers.FirstOrDefaultAsync(c => c.Name == name);
+    if (existing != null)
+        return existing;
 
     var center = new Center
     {
-        Name = "AgriCenter Pune",
-        Location = "Pune, Maharashtra, India",
+        Name = name,
+        Location = location,
+        CurrencySymbol = currencySymbol,
+        TimeZoneId = timeZoneId,
         CreatedAt = DateTime.UtcNow
     };
     db.Centers.Add(center);
-    await db.SaveChangesAsync();
+    return center;
+}
 
-    var users = new[]
-    {
-        new User
-        {
-            Name = "Admin SuperUser",
-            Email = "admin@agriapp.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("SuperUser123!"),
-            Role = Role.SuperUser,
-            CenterId = null,
-            CreatedAt = DateTime.UtcNow
-        },
-        new User
-        {
-            Name = "Rajesh Kumar",
-            Email = "rajesh@agriapp.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
-            Role = Role.Manager,
-            CenterId = center.Id,
-            CreatedAt = DateTime.UtcNow
-        },
-        new User
-        {
-            Name = "Priya Sharma",
-            Email = "priya@agriapp.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Sales123!"),
-            Role = Role.Sales,
-            CenterId = center.Id,
-            CreatedAt = DateTime.UtcNow
-        },
-        new User
-        {
-            Name = "Amit Patel",
-            Email = "amit@agriapp.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff123!"),
-            Role = Role.Staff,
-            CenterId = center.Id,
-            CreatedAt = DateTime.UtcNow
-        }
-    };
-    db.Users.AddRange(users);
-    await db.SaveChangesAsync();
+static async Task EnsureVendorAsync(AgriDbContext db, string name, int centerId)
+{
+    if (await db.Vendors.IgnoreQueryFilters().AnyAsync(v => v.Name == name && v.CenterId == centerId))
+        return;
 
-    var equipment = new[]
+    db.Vendors.Add(new Vendor
     {
-        new Equipment { Name = "John Deere 5405", Category = EquipmentCategory.Tractor, HourlyRate = 1500.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-        new Equipment { Name = "DJI Agras T40", Category = EquipmentCategory.Drone, HourlyRate = 2500.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-        new Equipment { Name = "Bio-CNG Generator 500", Category = EquipmentCategory.BioCNG, HourlyRate = 800.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-        new Equipment { Name = "Mahindra 575 DI", Category = EquipmentCategory.Tractor, HourlyRate = 1200.00m, CenterId = center.Id, CreatedAt = DateTime.UtcNow },
-    };
-    db.Equipment.AddRange(equipment);
-    await db.SaveChangesAsync();
+        Name = name,
+        CenterId = centerId,
+        CreatedAt = DateTime.UtcNow
+    });
+}
+
+static async Task EnsureCustomerAsync(AgriDbContext db, string name, int centerId)
+{
+    if (await db.Customers.IgnoreQueryFilters().AnyAsync(c => c.Name == name && c.CenterId == centerId))
+        return;
+
+    db.Customers.Add(new Customer
+    {
+        Name = name,
+        CenterId = centerId,
+        CreatedAt = DateTime.UtcNow
+    });
+}
+
+static async Task EnsureEquipmentAsync(
+    AgriDbContext db,
+    string name,
+    EquipmentCategory category,
+    decimal hourlyRate,
+    int centerId,
+    int vendorId,
+    bool isImplement = false)
+{
+    if (await db.Equipment.IgnoreQueryFilters().AnyAsync(e => e.Name == name && e.CenterId == centerId))
+        return;
+
+    db.Equipment.Add(new Equipment
+    {
+        Name = name,
+        Category = category,
+        HourlyRate = hourlyRate,
+        CenterId = centerId,
+        VendorId = vendorId,
+        IsImplement = isImplement,
+        CreatedAt = DateTime.UtcNow
+    });
+}
+
+static async Task EnsureServiceActivityAsync(
+    AgriDbContext db,
+    string name,
+    string description,
+    decimal baseRatePerHour,
+    int centerId)
+{
+    if (await db.ServiceActivities.IgnoreQueryFilters()
+            .AnyAsync(a => a.Name == name && a.CenterId == centerId))
+        return;
+
+    db.ServiceActivities.Add(new ServiceActivity
+    {
+        Name = name,
+        Description = description,
+        BaseRatePerHour = baseRatePerHour,
+        CenterId = centerId,
+        CreatedAt = DateTime.UtcNow
+    });
+}
+
+static async Task EnsureDemoUsersAsync(AgriDbContext db, int sangolaId, int edisonId)
+{
+    async Task AddIfMissingAsync(string email, string name, Role role, int? centerId, string password)
+    {
+        if (await db.Users.AnyAsync(u => u.Email == email))
+            return;
+        db.Users.Add(new User
+        {
+            Name = name,
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            Role = role,
+            CenterId = centerId,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    await AddIfMissingAsync("admin@agriapp.com", "Admin SuperUser", Role.SuperUser, null, "SuperUser123!");
+    await AddIfMissingAsync("vikram@sangola.agriapp.com", "Vikram Desai", Role.Manager, sangolaId, "Manager123!");
+    await AddIfMissingAsync("sneha@sangola.agriapp.com", "Sneha Kulkarni", Role.Sales, sangolaId, "Sales123!");
+    await AddIfMissingAsync("ravi@sangola.agriapp.com", "Ravi Jadhav", Role.Staff, sangolaId, "Staff123!");
+    await AddIfMissingAsync("james@edison.agriapp.com", "James Morrison", Role.Manager, edisonId, "Manager123!");
+    await AddIfMissingAsync("maria@edison.agriapp.com", "Maria Gonzalez", Role.Sales, edisonId, "Sales123!");
+    await AddIfMissingAsync("alex@edison.agriapp.com", "Alex Nguyen", Role.Staff, edisonId, "Staff123!");
 }

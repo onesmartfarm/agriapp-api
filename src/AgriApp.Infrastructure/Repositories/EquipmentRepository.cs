@@ -14,10 +14,15 @@ public class EquipmentRepository
     }
 
     public async Task<List<Equipment>> GetAllAsync()
-        => await _context.Equipment.AsNoTracking().ToListAsync();
+        => await _context.Equipment
+            .AsNoTracking()
+            .Include(e => e.Center)
+            .ToListAsync();
 
     public async Task<Equipment?> GetByIdAsync(int id)
-        => await _context.Equipment.FirstOrDefaultAsync(e => e.Id == id);
+        => await _context.Equipment
+            .Include(e => e.Center)
+            .FirstOrDefaultAsync(e => e.Id == id);
 
     public async Task<Equipment> CreateAsync(Equipment equipment)
     {

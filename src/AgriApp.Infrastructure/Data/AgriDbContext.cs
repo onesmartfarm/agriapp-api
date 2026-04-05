@@ -20,6 +20,7 @@ public class AgriDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<Equipment> Equipment => Set<Equipment>();
+    public DbSet<ServiceActivity> ServiceActivities => Set<ServiceActivity>();
     public DbSet<Inquiry> Inquiries => Set<Inquiry>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -28,6 +29,7 @@ public class AgriDbContext : DbContext
     public DbSet<CommissionLedger> CommissionLedgers => Set<CommissionLedger>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<WorkOrderTimeLog> WorkOrderTimeLogs => Set<WorkOrderTimeLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,6 +40,7 @@ public class AgriDbContext : DbContext
         ConfigureCustomer(modelBuilder);
         ConfigureVendor(modelBuilder);
         ConfigureEquipment(modelBuilder);
+        ConfigureServiceActivity(modelBuilder);
         ConfigureInquiry(modelBuilder);
         ConfigureWorkOrder(modelBuilder);
         ConfigureAuditLog(modelBuilder);
@@ -46,6 +49,7 @@ public class AgriDbContext : DbContext
         ConfigureCommissionLedger(modelBuilder);
         ConfigureInvoice(modelBuilder);
         ConfigurePayment(modelBuilder);
+        ConfigureWorkOrderTimeLog(modelBuilder);
     }
 
     private void ConfigureCenter(ModelBuilder modelBuilder)
@@ -56,6 +60,8 @@ public class AgriDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Location).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.CurrencySymbol).IsRequired().HasMaxLength(16);
+            entity.Property(e => e.TimeZoneId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.AdminUser)
@@ -144,6 +150,7 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.Category).HasConversion<string>().IsRequired();
             entity.Property(e => e.HourlyRate).HasPrecision(18, 2).IsRequired();
             entity.Property(e => e.PurchaseCost).HasPrecision(18, 2);
+            entity.Property(e => e.IsImplement).IsRequired().HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.Center)
@@ -155,6 +162,29 @@ public class AgriDbContext : DbContext
                   .WithMany(v => v.Equipment)
                   .HasForeignKey(e => e.VendorId)
                   .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasQueryFilter(e =>
+                _currentUser == null ||
+                _currentUser.Role == Role.SuperUser ||
+                e.CenterId == _currentUser.CenterId);
+        });
+    }
+
+    private void ConfigureServiceActivity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ServiceActivity>(entity =>
+        {
+            entity.ToTable("service_activities");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.BaseRatePerHour).HasPrecision(18, 2).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(e => e.Center)
+                  .WithMany(c => c.ServiceActivities)
+                  .HasForeignKey(e => e.CenterId)
+                  .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasQueryFilter(e =>
                 _currentUser == null ||
@@ -209,9 +239,29 @@ public class AgriDbContext : DbContext
 
             entity.Property(e => e.ResponsibleUserId).HasColumnName("StaffId").IsRequired();
 
-            entity.HasOne(e => e.Equipment)
-                  .WithMany(eq => eq.WorkOrders)
-                  .HasForeignKey(e => e.EquipmentId)
+            entity.HasOne(e => e.ServiceActivity)
+                  .WithMany(a => a.WorkOrders)
+                  .HasForeignKey(e => e.ServiceActivityId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Implement)
+                  .WithMany(eq => eq.WorkOrdersAsImplement)
+                  .HasForeignKey(e => e.ImplementId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Tractor)
+                  .WithMany(eq => eq.WorkOrdersAsTractor)
+                  .HasForeignKey(e => e.TractorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Customer)
+                  .WithMany(c => c.WorkOrders)
+                  .HasForeignKey(e => e.CustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Center)
+                  .WithMany(c => c.WorkOrders)
+                  .HasForeignKey(e => e.CenterId)
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.ResponsibleUser)
@@ -231,10 +281,14 @@ public class AgriDbContext : DbContext
 
             entity.HasIndex(w => new { w.CenterId, w.ScheduledStartDate, w.ScheduledEndDate })
                   .HasDatabaseName("IX_WorkOrders_CenterId_Schedule");
-            entity.HasIndex(w => w.EquipmentId)
-                  .HasDatabaseName("IX_WorkOrders_EquipmentId");
+            entity.HasIndex(w => w.ImplementId)
+                  .HasDatabaseName("IX_WorkOrders_ImplementId");
+            entity.HasIndex(w => w.TractorId)
+                  .HasDatabaseName("IX_WorkOrders_TractorId");
+            entity.HasIndex(w => w.ServiceActivityId);
             entity.HasIndex(w => w.ResponsibleUserId)
                   .HasDatabaseName("IX_WorkOrders_ResponsibleUserId");
+            entity.HasIndex(w => w.CustomerId);
         });
     }
 
@@ -360,6 +414,11 @@ public class AgriDbContext : DbContext
                   .HasForeignKey(e => e.WorkOrderId)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(e => e.Center)
+                  .WithMany(c => c.Invoices)
+                  .HasForeignKey(e => e.CenterId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasOne(e => e.Customer)
                   .WithMany(c => c.Invoices)
                   .HasForeignKey(e => e.CustomerId)
@@ -409,4 +468,36 @@ public class AgriDbContext : DbContext
                 e.CenterId == _currentUser.CenterId);
         });
     }
+
+    private void ConfigureWorkOrderTimeLog(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<WorkOrderTimeLog>(entity =>
+        {
+            entity.ToTable("work_order_time_logs");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.WorkOrderId).IsRequired();
+            entity.Property(e => e.StartTime).IsRequired();
+            entity.Property(e => e.EndTime).IsRequired();
+            entity.Property(e => e.LogType).HasConversion<string>().IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+
+            // Relationship
+            entity.HasOne(e => e.WorkOrder)
+                  .WithMany(w => w.TimeLogs)
+                  .HasForeignKey(e => e.WorkOrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Index for querying logs by WorkOrder
+            entity.HasIndex(e => e.WorkOrderId)
+                  .HasDatabaseName("IX_WorkOrderTimeLogs_WorkOrderId");
+
+            // Constraint: EndTime must be after StartTime
+            entity.HasCheckConstraint(
+                "CK_WorkOrderTimeLogs_EndTimeAfterStartTime",
+                "\"EndTime\" > \"StartTime\"");
+        });
+    }
 }
+

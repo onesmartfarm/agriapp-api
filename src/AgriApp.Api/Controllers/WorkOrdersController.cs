@@ -61,6 +61,23 @@ public class WorkOrdersController : ControllerBase
         }
     }
 
+    [HttpPatch("{id:int}")]
+    [Authorize(Roles = "SuperUser,Manager,Staff")]
+    public async Task<IActionResult> UpdateWorkOrder(int id, [FromBody] UpdateWorkOrderRequest request)
+    {
+        try
+        {
+            var workOrder = await _service.UpdateWorkOrderAsync(id, request);
+            return workOrder == null
+                ? NotFound(new { error = "Work order not found or access denied." })
+                : Ok(workOrder);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPatch("{id:int}/status")]
     [Authorize(Roles = "SuperUser,Manager,Staff")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateWorkOrderStatusRequest request)

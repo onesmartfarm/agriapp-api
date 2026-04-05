@@ -40,7 +40,7 @@ public class EquipmentController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateEquipmentRequest request)
     {
         if (!Enum.TryParse<EquipmentCategory>(request.Category, out var category))
-            return BadRequest(new { error = "Invalid category. Must be Tractor, Drone, or BioCNG" });
+            return BadRequest(new { error = "Invalid category. Must be Tractor, Drone, BioCNG, or Vehicle" });
 
         int centerId;
         if (_currentUser.Role == Role.SuperUser)
@@ -51,7 +51,8 @@ public class EquipmentController : ControllerBase
 
         var equipment = await _service.CreateAsync(
             request.Name, category, request.HourlyRate, centerId,
-            request.VendorId, request.PurchaseCost, request.PurchaseDate);
+            request.VendorId, request.PurchaseCost, request.PurchaseDate,
+            request.IsImplement);
         return Created($"/api/equipment/{equipment.Id}", equipment);
     }
 
@@ -69,7 +70,8 @@ public class EquipmentController : ControllerBase
 
         var equipment = await _service.UpdateAsync(
             id, request.Name, category, request.HourlyRate,
-            request.VendorId, request.PurchaseCost, request.PurchaseDate);
+            request.VendorId, request.PurchaseCost, request.PurchaseDate,
+            request.IsImplement);
         return equipment == null ? NotFound(new { error = "Equipment not found" }) : Ok(equipment);
     }
 
