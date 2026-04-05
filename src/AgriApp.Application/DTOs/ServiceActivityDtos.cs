@@ -13,7 +13,8 @@ public class CreateServiceActivityRequest
     [Required, Range(0.01, double.MaxValue, ErrorMessage = "Base rate must be positive")]
     public decimal BaseRatePerHour { get; set; }
 
-    [Required]
+    /// <summary>Must match an existing center row. Range rejects 0; [Required] alone does not reject default int.</summary>
+    [Range(1, int.MaxValue, ErrorMessage = "A valid center id is required.")]
     public int CenterId { get; set; }
 }
 

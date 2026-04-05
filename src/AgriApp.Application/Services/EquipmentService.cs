@@ -36,6 +36,16 @@ public class EquipmentService
         DateTime? purchaseDate = null,
         bool isImplement = false)
     {
+        if (centerId <= 0)
+            throw new ArgumentException("A valid center id is required.");
+
+        if (!await _repo.CenterExistsAsync(centerId))
+            throw new ArgumentException(
+                $"No center exists with id {centerId}. If you are a manager, your account’s CenterId may be out of date—log in again after a SuperUser fixes your user record, or ensure the API database has been migrated and seeded (centers table).");
+
+        if (vendorId is int vid && !await _repo.VendorBelongsToCenterAsync(vid, centerId))
+            throw new ArgumentException("Vendor not found or does not belong to the selected center.");
+
         var equipment = new Equipment
         {
             Name = name,

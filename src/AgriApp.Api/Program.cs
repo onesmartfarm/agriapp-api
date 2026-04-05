@@ -91,6 +91,8 @@ builder.Services.AddScoped<ServiceActivityService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Keep JWT claim types as issued (e.g. "CenterId") so ICurrentUser matches tokens from AuthController and Blazor payload parsing.
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,

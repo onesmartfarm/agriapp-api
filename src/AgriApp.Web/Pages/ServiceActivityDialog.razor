@@ -12,9 +12,15 @@
             <MudStack Spacing="3">
                 @if (IsCreate && _isSuperUser)
                 {
+                    @if (_centerList.Count == 0 && !_loadingCenters)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            No centers are available. Create a center first, then add service activities.
+                        </MudAlert>
+                    }
                     <MudSelect T="int" Value="_createForm.CenterId" ValueChanged="OnCenterChangedAsync"
                                Label="Center"
-                               FullWidth="true" Disabled="_loadingCenters">
+                               FullWidth="true" Disabled="_loadingCenters || _centerList.Count == 0">
                         @foreach (var c in _centerList)
                         {
                             <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
@@ -24,6 +30,12 @@
                 else if (IsCreate && _centerLabel != null)
                 {
                     <MudText Typo="Typo.body2" Class="mud-text-secondary">@_centerLabel</MudText>
+                }
+                else if (IsCreate && !_isSuperUser && _createForm.CenterId <= 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        Your account has no center assignment. A Manager must belong to a center to create activities.
+                    </MudAlert>
                 }
 
                 <MudTextField @bind-Value="_createForm.Name" Label="Name" FullWidth="true"
@@ -45,7 +57,7 @@
     <DialogActions>
         <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
         <MudButton form="saForm" ButtonType="ButtonType.Submit" Color="Color.Primary"
-                   Variant="Variant.Filled" Disabled="_saving">
+                   Variant="Variant.Filled" Disabled="_saving || (IsCreate && _createForm.CenterId <= 0)">
             @(_saving ? "Saving…" : "Save")
         </MudButton>
     </DialogActions>

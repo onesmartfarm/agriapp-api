@@ -49,11 +49,22 @@ public class EquipmentController : ControllerBase
             centerId = _currentUser.CenterId
                 ?? throw new InvalidOperationException("User must belong to a center");
 
-        var equipment = await _service.CreateAsync(
-            request.Name, category, request.HourlyRate, centerId,
-            request.VendorId, request.PurchaseCost, request.PurchaseDate,
-            request.IsImplement);
-        return Created($"/api/equipment/{equipment.Id}", equipment);
+        try
+        {
+            var equipment = await _service.CreateAsync(
+                request.Name, category, request.HourlyRate, centerId,
+                request.VendorId, request.PurchaseCost, request.PurchaseDate,
+                request.IsImplement);
+            return Created($"/api/equipment/{equipment.Id}", equipment);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPut("{id:int}")]

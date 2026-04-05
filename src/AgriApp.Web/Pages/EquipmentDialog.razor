@@ -37,9 +37,15 @@
 
                 @if (IsCreate && _isSuperUser)
                 {
+                    @if (_centerList.Count == 0 && !_loadingCenters)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            No centers are available. Seed or create centers before adding equipment.
+                        </MudAlert>
+                    }
                     <MudSelect T="int" Value="_form.CenterId" ValueChanged="OnCreateCenterChangedAsync"
                                Label="Center"
-                               FullWidth="true" Disabled="_loadingCenters">
+                               FullWidth="true" Disabled="_loadingCenters || _centerList.Count == 0">
                         @foreach (var c in _centerList)
                         {
                             <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
@@ -49,6 +55,12 @@
                 else if (IsCreate && _centerLabel != null)
                 {
                     <MudText Typo="Typo.body2" Class="mud-text-secondary">@_centerLabel</MudText>
+                }
+                else if (IsCreate && !_isSuperUser && _form.CenterId <= 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        Your account has no center assignment. A Manager must belong to a center.
+                    </MudAlert>
                 }
 
                 <MudSelect T="int?" @bind-Value="_form.VendorId"
@@ -82,7 +94,7 @@
     <DialogActions>
         <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
         <MudButton form="eqForm" ButtonType="ButtonType.Submit" Color="Color.Primary"
-                   Variant="Variant.Filled" Disabled="_saving">
+                   Variant="Variant.Filled" Disabled="_saving || (IsCreate && _form.CenterId <= 0)">
             @(_saving ? "Saving…" : "Save")
         </MudButton>
     </DialogActions>

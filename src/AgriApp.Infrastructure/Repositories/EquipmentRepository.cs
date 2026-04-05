@@ -24,6 +24,14 @@ public class EquipmentRepository
             .Include(e => e.Center)
             .FirstOrDefaultAsync(e => e.Id == id);
 
+    public Task<bool> CenterExistsAsync(int centerId)
+        => _context.Centers.IgnoreQueryFilters().AsNoTracking()
+            .AnyAsync(c => c.Id == centerId);
+
+    public Task<bool> VendorBelongsToCenterAsync(int vendorId, int centerId)
+        => _context.Vendors.IgnoreQueryFilters().AsNoTracking()
+            .AnyAsync(v => v.Id == vendorId && v.CenterId == centerId);
+
     public async Task<Equipment> CreateAsync(Equipment equipment)
     {
         _context.Equipment.Add(equipment);

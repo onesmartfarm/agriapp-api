@@ -121,7 +121,8 @@ public record CreateServiceActivityForm
     [Range(0.01, double.MaxValue, ErrorMessage = "Rate must be positive")]
     public decimal BaseRatePerHour { get; set; } = 1m;
 
-    public int CenterId { get; set; } = 1;
+    /// <summary>0 until SuperUser picks a center or Manager claim is applied; avoids posting a bogus default of 1.</summary>
+    public int CenterId { get; set; }
 }
 
 public record UpdateServiceActivityForm
@@ -152,7 +153,7 @@ public record CreateEquipmentRequest
     [Range(0.01, double.MaxValue, ErrorMessage = "Hourly rate must be positive")]
     public decimal HourlyRate { get; set; } = 1.0m;
 
-    public int CenterId { get; set; } = 1;
+    public int CenterId { get; set; }
     public int? VendorId { get; set; }
     public decimal? PurchaseCost { get; set; }
     public DateTime? PurchaseDate { get; set; }

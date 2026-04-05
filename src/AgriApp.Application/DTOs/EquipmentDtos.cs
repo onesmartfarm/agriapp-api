@@ -13,7 +13,8 @@ public class CreateEquipmentRequest
     [Required, Range(0.01, double.MaxValue, ErrorMessage = "HourlyRate must be positive")]
     public decimal HourlyRate { get; set; }
 
-    [Required]
+    /// <summary>SuperUser only; managers’ center comes from the JWT. Range rejects 0.</summary>
+    [Range(1, int.MaxValue, ErrorMessage = "A valid center id is required.")]
     public int CenterId { get; set; }
 
     public int? VendorId { get; set; }

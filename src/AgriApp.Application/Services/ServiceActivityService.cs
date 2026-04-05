@@ -106,9 +106,11 @@ public class ServiceActivityService
 
     private async Task EnsureCenterExistsAsync(int centerId)
     {
-        var ok = await _db.Centers.AsNoTracking().AnyAsync(c => c.Id == centerId);
+        var ok = await _db.Centers.IgnoreQueryFilters().AsNoTracking()
+            .AnyAsync(c => c.Id == centerId);
         if (!ok)
-            throw new ArgumentException("Center not found.");
+            throw new ArgumentException(
+                $"No center exists with id {centerId}. For managers, ensure your account’s CenterId matches a row in the database; for SuperUser, pick a center from the list.");
     }
 
     private static ServiceActivityResponse ToResponse(ServiceActivity a)
