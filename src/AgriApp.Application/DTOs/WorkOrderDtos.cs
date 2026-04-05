@@ -23,7 +23,11 @@ public class CreateWorkOrderRequest
     [Required]
     public int ResponsibleUserId { get; set; }
 
-    public int? EquipmentId { get; set; }
+    public int? ServiceActivityId { get; set; }
+
+    public int? ImplementId { get; set; }
+
+    public int? TractorId { get; set; }
 
     public int? InquiryId { get; set; }
 
@@ -67,7 +71,9 @@ public class WorkOrderResponse
     public int CenterId { get; set; }
     public int? CustomerId { get; set; }
     public int? InquiryId { get; set; }
-    public int? EquipmentId { get; set; }
+    public int? ServiceActivityId { get; set; }
+    public int? ImplementId { get; set; }
+    public int? TractorId { get; set; }
     public int ResponsibleUserId { get; set; }
     public string Description { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
@@ -80,6 +86,8 @@ public class WorkOrderResponse
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
-    public string? EquipmentName { get; set; }
+    public string? ServiceActivityName { get; set; }
+    public string? ImplementName { get; set; }
+    public string? TractorName { get; set; }
     public string CurrencySymbol { get; set; } = "₹";
 }

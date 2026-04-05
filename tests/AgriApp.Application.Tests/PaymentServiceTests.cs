@@ -84,7 +84,7 @@ public sealed class PaymentServiceTests
     {
         _db.WorkOrders.Add(new WorkOrder
         {
-            Id = workOrderId, CenterId = 1, EquipmentId = 1, ResponsibleUserId = 1, InquiryId = 1,
+            Id = workOrderId, CenterId = 1, ImplementId = 1, ResponsibleUserId = 1, InquiryId = 1,
             ScheduledStartDate = DateTime.UtcNow.AddDays(-2),
             ScheduledEndDate = DateTime.UtcNow.AddDays(-1),
             Status = WorkStatus.Completed,
@@ -205,7 +205,7 @@ public sealed class PaymentServiceTests
     {
         _db.WorkOrders.Add(new WorkOrder
         {
-            Id = 7, CenterId = 1, EquipmentId = 1, ResponsibleUserId = 1, InquiryId = 1,
+            Id = 7, CenterId = 1, ImplementId = 1, ResponsibleUserId = 1, InquiryId = 1,
             ScheduledStartDate = DateTime.UtcNow.AddDays(-2),
             ScheduledEndDate = DateTime.UtcNow.AddDays(-1),
             Status = WorkStatus.Completed,

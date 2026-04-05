@@ -48,7 +48,9 @@ public class WorkOrderService : IWorkOrderService
             var response = await _http.PostAsJsonAsync("api/workorders", new
             {
                 request.ResponsibleUserId,
-                request.EquipmentId,
+                request.ServiceActivityId,
+                request.ImplementId,
+                request.TractorId,
                 request.InquiryId,
                 request.CustomerId,
                 request.CenterId,

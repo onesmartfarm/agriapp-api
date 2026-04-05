@@ -41,7 +41,7 @@ public class InvoiceService
     {
         var workOrder = await _db.WorkOrders
             .AsNoTracking()
-            .Include(w => w.Equipment)
+            .Include(w => w.ServiceActivity)
             .Include(w => w.TimeLogs)
             .FirstOrDefaultAsync(w => w.Id == request.WorkOrderId)
             ?? throw new KeyNotFoundException($"WorkOrder {request.WorkOrderId} not found.");
@@ -65,14 +65,29 @@ public class InvoiceService
                 .Where(t => t.LogType == WorkTimeLogType.Working)
                 .Sum(t => (decimal)(t.EndTime - t.StartTime).TotalHours);
 
-            var rentalFromWorking = workOrder.Equipment != null
-                ? Math.Round(workingHours * workOrder.Equipment.HourlyRate, 2, MidpointRounding.AwayFromZero)
-                : 0m;
+            if (workingHours > 0)
+            {
+                if (workOrder.ServiceActivityId == null || workOrder.ServiceActivity == null)
+                    throw new InvalidOperationException(
+                        "Invoice generation requires a service activity on the work order when billable (Working) time logs are present.");
 
-            baseAmount = Math.Round(
-                rentalFromWorking + workOrder.TotalMaterialCost + request.AdditionalFees,
-                2,
-                MidpointRounding.AwayFromZero);
+                var serviceLabor = Math.Round(
+                    workingHours * workOrder.ServiceActivity.BaseRatePerHour,
+                    2,
+                    MidpointRounding.AwayFromZero);
+
+                baseAmount = Math.Round(
+                    serviceLabor + request.AdditionalFees,
+                    2,
+                    MidpointRounding.AwayFromZero);
+            }
+            else
+            {
+                baseAmount = Math.Round(
+                    workOrder.TotalMaterialCost + request.AdditionalFees,
+                    2,
+                    MidpointRounding.AwayFromZero);
+            }
         }
         else
         {

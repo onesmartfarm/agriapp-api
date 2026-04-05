@@ -10,7 +10,13 @@ public class WorkOrder : ICenterScoped, IAuditable
     public Center Center { get; set; } = null!;
     public int? CustomerId { get; set; }
     public int? InquiryId { get; set; }
-    public int? EquipmentId { get; set; }
+    public int? ServiceActivityId { get; set; }
+
+    /// <summary>Attachment or tool used on the job (when applicable).</summary>
+    public int? ImplementId { get; set; }
+
+    /// <summary>Tractor or other power unit (when applicable).</summary>
+    public int? TractorId { get; set; }
 
     /// <summary>
     /// Maps to the existing 'StaffId' column in the database.
@@ -32,7 +38,9 @@ public class WorkOrder : ICenterScoped, IAuditable
     public DateTime? UpdatedAt { get; set; }
 
     public virtual Customer? Customer { get; set; }
-    public Equipment? Equipment { get; set; }
+    public ServiceActivity? ServiceActivity { get; set; }
+    public Equipment? Implement { get; set; }
+    public Equipment? Tractor { get; set; }
     public User ResponsibleUser { get; set; } = null!;
     public Inquiry? Inquiry { get; set; }
     public ICollection<WorkOrderTimeLog> TimeLogs { get; set; } = new List<WorkOrderTimeLog>();

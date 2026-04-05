@@ -27,11 +27,11 @@ public sealed class CalendarServiceTests
     private static ICurrentUser ManagerAt(int centerId) =>
         Mock.Of<ICurrentUser>(u => u.Role == Role.Manager && u.CenterId == (int?)centerId);
 
-    private static WorkOrder MakeWorkOrder(int centerId, int equipmentId, int staffId, string description) =>
+    private static WorkOrder MakeWorkOrder(int centerId, int implementId, int staffId, string description) =>
         new()
         {
             CenterId = centerId,
-            EquipmentId = equipmentId,
+            ImplementId = implementId,
             ResponsibleUserId = staffId,
             Description = description,
             Type = WorkOrderType.RentalBooking,
@@ -48,8 +48,8 @@ public sealed class CalendarServiceTests
         // Arrange — seed with a SuperUser context (no query filter) so both centers' rows are written
         string dbName = Guid.NewGuid().ToString();
         using var seedDb = CreateContext(dbName, SuperUser());
-        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 1, equipmentId: 10, staffId: 1, "Center 1 — Tractor A"));
-        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 2, equipmentId: 20, staffId: 2, "Center 2 — Harvester B"));
+        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 1, implementId: 10, staffId: 1, "Center 1 — Tractor A"));
+        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 2, implementId: 20, staffId: 2, "Center 2 — Harvester B"));
         seedDb.SaveChanges();
 
         // Act — query as a Manager who belongs to Center 1
@@ -68,7 +68,7 @@ public sealed class CalendarServiceTests
 
         var slot = result.WorkOrders[0];
         Assert.AreEqual(1,                     slot.CenterId);
-        Assert.AreEqual(10,                    slot.EquipmentId);
+        Assert.AreEqual(10,                    slot.ImplementId);
         Assert.AreEqual(1,                     slot.ResponsibleUserId);
         Assert.AreEqual("Center 1 — Tractor A", slot.Description);
         Assert.AreEqual("RentalBooking",        slot.Type);
@@ -80,9 +80,9 @@ public sealed class CalendarServiceTests
     {
         string dbName = Guid.NewGuid().ToString();
         using var seedDb = CreateContext(dbName, SuperUser());
-        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 1, equipmentId: 10, staffId: 1, "Center 1 Order"));
-        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 2, equipmentId: 20, staffId: 2, "Center 2 Order"));
-        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 3, equipmentId: 30, staffId: 3, "Center 3 Order"));
+        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 1, implementId: 10, staffId: 1, "Center 1 Order"));
+        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 2, implementId: 20, staffId: 2, "Center 2 Order"));
+        seedDb.WorkOrders.Add(MakeWorkOrder(centerId: 3, implementId: 30, staffId: 3, "Center 3 Order"));
         seedDb.SaveChanges();
 
         using var queryDb = CreateContext(dbName, SuperUser());
@@ -102,8 +102,8 @@ public sealed class CalendarServiceTests
         string dbName = Guid.NewGuid().ToString();
         using var seedDb = CreateContext(dbName, SuperUser());
 
-        var active = MakeWorkOrder(centerId: 1, equipmentId: 10, staffId: 1, "Active");
-        var cancelled = MakeWorkOrder(centerId: 1, equipmentId: 11, staffId: 2, "Cancelled");
+        var active = MakeWorkOrder(centerId: 1, implementId: 10, staffId: 1, "Active");
+        var cancelled = MakeWorkOrder(centerId: 1, implementId: 11, staffId: 2, "Cancelled");
         cancelled.Status = WorkStatus.Cancelled;
 
         seedDb.WorkOrders.AddRange(active, cancelled);
@@ -128,10 +128,10 @@ public sealed class CalendarServiceTests
         using var seedDb = CreateContext(dbName, SuperUser());
 
         // Order within range: March 1–3
-        var inRange = MakeWorkOrder(centerId: 1, equipmentId: 10, staffId: 1, "In Range");
+        var inRange = MakeWorkOrder(centerId: 1, implementId: 10, staffId: 1, "In Range");
 
         // Order outside range: March 10–12 (query range is March 1–5)
-        var outOfRange = MakeWorkOrder(centerId: 1, equipmentId: 11, staffId: 2, "Out of Range");
+        var outOfRange = MakeWorkOrder(centerId: 1, implementId: 11, staffId: 2, "Out of Range");
         outOfRange.ScheduledStartDate = BaseDate.AddDays(9);
         outOfRange.ScheduledEndDate   = BaseDate.AddDays(11);
 

@@ -1,0 +1,127 @@
+@page "/services"
+@using Microsoft.AspNetCore.Components.Authorization
+@using AgriApp.Web.Services
+@inject IServiceActivityService ServiceActivityService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<AuthorizeView Roles="SuperUser,Manager">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">Service activities</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="OpenCreateDialog"
+                               StartIcon="@Icons.Material.Filled.Add">
+                        Add activity
+                    </MudButton>
+                </MudStack>
+
+                @if (_loading)
+                {
+                    <MudProgressCircular indeterminate="true" />
+                }
+                else if (_rows == null || _rows.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No service activities yet.</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="_rows" Striped="true" Bordered="true" Dense="true" Filterable="true">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Name" Title="Name" Sortable="true" />
+                            <PropertyColumn Property="x => x.Description" Title="Description" />
+                            <TemplateColumn Title="Rate / hr" Sortable="true" SortBy="@(x => x.BaseRatePerHour)">
+                                <CellTemplate Context="r">
+                                    @r.Item.CurrencySymbol @r.Item.BaseRatePerHour.ToString("N2")
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <PropertyColumn Property="x => x.CenterName" Title="Center" Sortable="true" />
+                            <TemplateColumn Title="Actions">
+                                <CellTemplate Context="a">
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Edit"
+                                                   OnClick="() => OpenEditDialog(a.Item.Id)" />
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   OnClick="() => DeleteRow(a.Item.Id)" />
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudStack>
+        </MudContainer>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to access this page.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<ServiceActivityRow>? _rows;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _rows = await ServiceActivityService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ServiceActivityDialog>("Add service activity",
+            new DialogParameters<ServiceActivityDialog> { { x => x.IsCreate, true } });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task OpenEditDialog(int id)
+    {
+        var parameters = new DialogParameters<ServiceActivityDialog>
+        {
+            { x => x.IsCreate, false },
+            { x => x.ActivityId, id }
+        };
+        var dialog = await DialogService.ShowAsync<ServiceActivityDialog>("Edit service activity", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task DeleteRow(int id)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete activity",
+            "Delete this service activity? Work orders referencing it will keep historical data only if allowed by the server.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+            return;
+
+        var (ok, err) = await ServiceActivityService.DeleteAsync(id);
+        if (ok)
+        {
+            Snackbar.Add("Deleted.", Severity.Success);
+            await LoadAsync();
+        }
+        else
+            Snackbar.Add(err ?? "Delete failed.", Severity.Error);
+    }
+}

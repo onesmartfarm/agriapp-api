@@ -60,11 +60,22 @@ public sealed class WorkOrderServiceTests
         });
         _db.Equipment.Add(new Equipment
         {
+            Id = 1,
+            Name = "Tool A",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 50m,
+            CenterId = 1,
+            IsImplement = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Equipment.Add(new Equipment
+        {
             Id = 10,
             Name = "Combine",
             Category = EquipmentCategory.Tractor,
             HourlyRate = 100m,
             CenterId = 1,
+            IsImplement = true,
             CreatedAt = DateTime.UtcNow
         });
         _db.SaveChanges();
@@ -85,7 +96,7 @@ public sealed class WorkOrderServiceTests
         var wo = new WorkOrder
         {
             CenterId = centerId,
-            EquipmentId = equipmentId,
+            ImplementId = equipmentId,
             ResponsibleUserId = responsibleUserId,
             Description = "Seeded order",
             Type = WorkOrderType.RentalBooking,
@@ -107,7 +118,7 @@ public sealed class WorkOrderServiceTests
         var request = new CreateWorkOrderRequest
         {
             ResponsibleUserId = 1,
-            EquipmentId = 10,
+            ImplementId = 10,
             Description = "Harvest combine rental",
             Type = "RentalBooking",
             ScheduledStartDate = Monday,
@@ -140,7 +151,7 @@ public sealed class WorkOrderServiceTests
         var request = new CreateWorkOrderRequest
         {
             ResponsibleUserId = 2,   // different staff — but same equipment
-            EquipmentId = 1,         // same equipment
+            ImplementId = 1,         // same implement
             Description = "Overlapping rental attempt",
             Type = "RentalBooking",
             ScheduledStartDate = Tuesday,    // Tue → Thu overlaps Mon → Wed
@@ -162,7 +173,7 @@ public sealed class WorkOrderServiceTests
         var request = new CreateWorkOrderRequest
         {
             ResponsibleUserId = 5,   // same staff
-            EquipmentId = null,      // no equipment
+            ImplementId = null,      // no implement
             Description = "Staff overlap attempt",
             Type = "InternalProject",
             ScheduledStartDate = Tuesday,    // Tue → Thu overlaps Mon → Wed
@@ -184,7 +195,7 @@ public sealed class WorkOrderServiceTests
         var request = new CreateWorkOrderRequest
         {
             ResponsibleUserId = 5,
-            EquipmentId = 1,          // same equipment + same dates as cancelled order
+            ImplementId = 1,          // same implement + same dates as cancelled order
             Description = "Should succeed past cancelled order",
             Type = "RentalBooking",
             ScheduledStartDate = Monday,
@@ -213,7 +224,7 @@ public sealed class WorkOrderServiceTests
         var request = new CreateWorkOrderRequest
         {
             ResponsibleUserId = 11,
-            EquipmentId = 1,
+            ImplementId = 1,
             Description = "Back-to-back booking",
             Type = "RentalBooking",
             ScheduledStartDate = Wednesday,   // starts exactly when previous ends

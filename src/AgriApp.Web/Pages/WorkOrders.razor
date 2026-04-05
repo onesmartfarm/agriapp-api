@@ -30,7 +30,20 @@
                     <MudDataGrid Items="_workOrders" Striped="true" Bordered="true" Dense="true">
                         <Columns>
                             <PropertyColumn Property="x => x.Id" Title="ID" Sortable="true" />
-                            <PropertyColumn Property="x => x.EquipmentName" Title="Equipment" Sortable="true" />
+                            <TemplateColumn Title="Service / assets" Sortable="false">
+                                <CellTemplate Context="assetCtx">
+                                    @if (!string.IsNullOrEmpty(assetCtx.Item.ServiceActivityName))
+                                    {
+                                        <MudText Typo="Typo.body2">@assetCtx.Item.ServiceActivityName</MudText>
+                                    }
+                                    @if (!string.IsNullOrEmpty(assetCtx.Item.TractorName) || !string.IsNullOrEmpty(assetCtx.Item.ImplementName))
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                            @(assetCtx.Item.TractorName ?? "—") · @(assetCtx.Item.ImplementName ?? "—")
+                                        </MudText>
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
                             <PropertyColumn Property="x => x.Description" Title="Description" />
                             <PropertyColumn Property="x => x.ScheduledStartDate" Title="Start Date" Format="yyyy-MM-dd HH:mm" Sortable="true" />
                             <PropertyColumn Property="x => x.ScheduledEndDate" Title="End Date" Format="yyyy-MM-dd HH:mm" Sortable="true" />

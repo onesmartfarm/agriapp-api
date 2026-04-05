@@ -13,11 +13,16 @@ public class Equipment : ICenterScoped, IAuditable
     public int? VendorId { get; set; }
     public decimal? PurchaseCost { get; set; }
     public DateTime? PurchaseDate { get; set; }
+
+    /// <summary>True for attachments/tools billed under a service activity; false for tractors/power units.</summary>
+    public bool IsImplement { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
     public Center Center { get; set; } = null!;
     public Vendor? Vendor { get; set; }
     public ICollection<Inquiry> Inquiries { get; set; } = new List<Inquiry>();
-    public ICollection<WorkOrder> WorkOrders { get; set; } = new List<WorkOrder>();
+    public ICollection<WorkOrder> WorkOrdersAsImplement { get; set; } = new List<WorkOrder>();
+    public ICollection<WorkOrder> WorkOrdersAsTractor { get; set; } = new List<WorkOrder>();
 }

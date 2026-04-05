@@ -20,7 +20,9 @@ public class WorkOrderService
         var rows = await _db.WorkOrders
             .AsNoTracking()
             .Include(w => w.Center)
-            .Include(w => w.Equipment)
+            .Include(w => w.Implement)
+            .Include(w => w.Tractor)
+            .Include(w => w.ServiceActivity)
             .OrderByDescending(w => w.Id)
             .ToListAsync();
         return rows.Select(MapToResponse).ToList();
@@ -31,7 +33,9 @@ public class WorkOrderService
         var w = await _db.WorkOrders
             .AsNoTracking()
             .Include(x => x.Center)
-            .Include(x => x.Equipment)
+            .Include(x => x.Implement)
+            .Include(x => x.Tractor)
+            .Include(x => x.ServiceActivity)
             .FirstOrDefaultAsync(x => x.Id == id);
         return w == null ? null : MapToResponse(w);
     }
@@ -44,8 +48,13 @@ public class WorkOrderService
         if (request.ScheduledEndDate <= request.ScheduledStartDate)
             throw new ArgumentException("ScheduledEndDate must be after ScheduledStartDate.");
 
+        await ValidateServiceActivityForCenterAsync(request.ServiceActivityId, centerId);
+        await ValidateImplementAsync(request.ImplementId, centerId);
+        await ValidateTractorAsync(request.TractorId, centerId);
+
         await EnforceDoubleBookingFirewall(
-            request.EquipmentId,
+            request.ImplementId,
+            request.TractorId,
             request.ResponsibleUserId,
             request.ScheduledStartDate,
             request.ScheduledEndDate,
@@ -58,7 +67,9 @@ public class WorkOrderService
             CenterId = centerId,
             CustomerId = request.CustomerId,
             InquiryId = request.InquiryId,
-            EquipmentId = request.EquipmentId,
+            ServiceActivityId = request.ServiceActivityId,
+            ImplementId = request.ImplementId,
+            TractorId = request.TractorId,
             ResponsibleUserId = request.ResponsibleUserId,
             Description = request.Description,
             Type = type,
@@ -116,7 +127,6 @@ public class WorkOrderService
 
     public async Task<bool> DeleteAsync(int id)
     {
-        // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
         var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
         if (workOrder == null) return false;
         _db.WorkOrders.Remove(workOrder);
@@ -126,7 +136,6 @@ public class WorkOrderService
 
     public async Task<WorkOrderResponse?> UpdateStatusAsync(int id, WorkStatus status)
     {
-        // Use FirstOrDefaultAsync so Global Query Filter (CenterId isolation) is applied
         var workOrder = await _db.WorkOrders.FirstOrDefaultAsync(w => w.Id == id);
         if (workOrder == null) return null;
 
@@ -153,8 +162,43 @@ public class WorkOrderService
             throw new ArgumentException("Customer not found or does not belong to this center.");
     }
 
+    private async Task ValidateServiceActivityForCenterAsync(int? serviceActivityId, int centerId)
+    {
+        if (!serviceActivityId.HasValue) return;
+
+        var ok = await _db.ServiceActivities.AsNoTracking()
+            .AnyAsync(a => a.Id == serviceActivityId.Value && a.CenterId == centerId);
+        if (!ok)
+            throw new ArgumentException("Service activity not found or does not belong to this center.");
+    }
+
+    private async Task ValidateImplementAsync(int? implementId, int centerId)
+    {
+        if (!implementId.HasValue) return;
+
+        var eq = await _db.Equipment.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == implementId.Value && e.CenterId == centerId);
+        if (eq == null)
+            throw new ArgumentException("Implement (equipment) not found or does not belong to this center.");
+        if (!eq.IsImplement)
+            throw new ArgumentException("Selected implement must be marked as an implement (attachment/tool).");
+    }
+
+    private async Task ValidateTractorAsync(int? tractorId, int centerId)
+    {
+        if (!tractorId.HasValue) return;
+
+        var eq = await _db.Equipment.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == tractorId.Value && e.CenterId == centerId);
+        if (eq == null)
+            throw new ArgumentException("Tractor (equipment) not found or does not belong to this center.");
+        if (eq.IsImplement)
+            throw new ArgumentException("Selected tractor must not be marked as an implement.");
+    }
+
     private async Task EnforceDoubleBookingFirewall(
-        int? equipmentId,
+        int? implementId,
+        int? tractorId,
         int responsibleUserId,
         DateTime start,
         DateTime end,
@@ -170,21 +214,14 @@ public class WorkOrderService
         if (excludeId.HasValue)
             query = query.Where(w => w.Id != excludeId.Value);
 
-        bool conflict;
+        var conflicts = await query
+            .Where(w =>
+                w.ResponsibleUserId == responsibleUserId ||
+                (implementId.HasValue && w.ImplementId == implementId) ||
+                (tractorId.HasValue && w.TractorId == tractorId))
+            .AnyAsync();
 
-        if (equipmentId.HasValue)
-        {
-            conflict = await query.AnyAsync(w =>
-                w.EquipmentId == equipmentId ||
-                w.ResponsibleUserId == responsibleUserId);
-        }
-        else
-        {
-            conflict = await query.AnyAsync(w =>
-                w.ResponsibleUserId == responsibleUserId);
-        }
-
-        if (conflict)
+        if (conflicts)
             throw new InvalidOperationException("Schedule conflict detected.");
     }
 
@@ -197,7 +234,9 @@ public class WorkOrderService
             CenterId = w.CenterId,
             CustomerId = w.CustomerId,
             InquiryId = w.InquiryId,
-            EquipmentId = w.EquipmentId,
+            ServiceActivityId = w.ServiceActivityId,
+            ImplementId = w.ImplementId,
+            TractorId = w.TractorId,
             ResponsibleUserId = w.ResponsibleUserId,
             Description = w.Description,
             Type = w.Type.ToString(),
@@ -209,7 +248,9 @@ public class WorkOrderService
             TotalMaterialCost = w.TotalMaterialCost,
             CreatedAt = w.CreatedAt,
             UpdatedAt = w.UpdatedAt,
-            EquipmentName = w.Equipment?.Name,
+            ServiceActivityName = w.ServiceActivity?.Name,
+            ImplementName = w.Implement?.Name,
+            TractorName = w.Tractor?.Name,
             CurrencySymbol = sym
         };
     }

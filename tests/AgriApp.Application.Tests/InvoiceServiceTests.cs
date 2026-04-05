@@ -77,6 +77,7 @@ public sealed class InvoiceServiceTests
             Category = EquipmentCategory.Tractor,
             HourlyRate = 100m,
             CenterId = 1,
+            IsImplement = false,
             CreatedAt = DateTime.UtcNow
         });
         _db.SaveChanges();
@@ -91,7 +92,7 @@ public sealed class InvoiceServiceTests
         {
             Id = id,
             CenterId = centerId,
-            EquipmentId = 1,
+            ImplementId = 1,
             ResponsibleUserId = 1,
             InquiryId = 1,
             ScheduledStartDate = DateTime.UtcNow.AddDays(-2),
@@ -132,7 +133,7 @@ public sealed class InvoiceServiceTests
     {
         var wo = new WorkOrder
         {
-            Id = 2, CenterId = 1, EquipmentId = 1, ResponsibleUserId = 1, InquiryId = 1,
+            Id = 2, CenterId = 1, ImplementId = 1, ResponsibleUserId = 1, InquiryId = 1,
             ScheduledStartDate = DateTime.UtcNow.AddDays(-1),
             ScheduledEndDate = DateTime.UtcNow.AddDays(1),
             Status = WorkStatus.InProgress,

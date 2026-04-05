@@ -6,6 +6,7 @@
 @inject IUserService UserService
 @inject ICustomerService CustomerService
 @inject ICenterService CenterService
+@inject IServiceActivityService ServiceActivityService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 
@@ -32,14 +33,50 @@
                     </MudSelect>
 
                     @* ── Relational dropdowns ───────────────────────────────── *@
-                    <MudSelect T="int?" @bind-Value="_form.EquipmentId" Label="Equipment (optional)"
-                               FullWidth="true" Disabled="_loadingLookups">
+                    @if (IsCreate && _isSuperUser)
+                    {
+                        <MudSelect T="int" Value="@( _form.CenterId ?? 0 )" ValueChanged="@(async v => await OnWoCenterChangedAsync(v))"
+                                   Label="Center"
+                                   FullWidth="true" Disabled="_loadingLookups">
+                            <MudSelectItem T="int" Value="0">— Select center —</MudSelectItem>
+                            @foreach (var c in _centerList)
+                            {
+                                <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    <MudSelect T="int?" Value="_form.ServiceActivityId" ValueChanged="OnServiceActivityChangedAsync"
+                               Label="Service activity (optional)"
+                               FullWidth="true" Disabled="_loadingLookups || EffectiveCenterId <= 0">
                         <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
-                        @foreach (var eq in _equipmentList)
+                        @foreach (var a in _serviceActivities)
                         {
-                            <MudSelectItem T="int?" Value="@((int?)eq.Id)">
-                                @eq.Name (@eq.Category · @eq.CurrencySymbol@eq.HourlyRate.ToString("N0")/hr)
-                            </MudSelectItem>
+                            <MudSelectItem T="int?" Value="@((int?)a.Id)">@a.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudNumericField @bind-Value="_serviceHourlyRate"
+                                     Label="@($"Billing rate ({_centerCurrencySymbol}/hr) — from selected service")"
+                                     Format="N2" FullWidth="true" Disabled="true" />
+
+                    <MudSelect T="int?" @bind-Value="_form.ImplementId"
+                               Label="Implement (optional)"
+                               FullWidth="true" Disabled="_loadingLookups || EffectiveCenterId <= 0">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                        @foreach (var eq in _implementsForCenter)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)eq.Id)">@eq.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="int?" @bind-Value="_form.TractorId"
+                               Label="Tractor / power unit (optional)"
+                               FullWidth="true" Disabled="_loadingLookups || EffectiveCenterId <= 0">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                        @foreach (var eq in _tractorsForCenter)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)eq.Id)">@eq.Name</MudSelectItem>
                         }
                     </MudSelect>
 
@@ -115,12 +152,10 @@
 
                     @* ── Billing Summary Bar ────────────────────────────────── *@
                     @{
-                        var selectedEq = _equipmentList.FirstOrDefault(e => e.Id == _form.EquipmentId);
-                        var billSym = string.IsNullOrWhiteSpace(selectedEq?.CurrencySymbol) ? _centerCurrencySymbol : selectedEq!.CurrencySymbol;
                         var billableHrs = _spans.Where(s => s.IsBillable).Sum(s => s.Hours);
                         var nonBillHrs = _spans.Where(s => !s.IsBillable).Sum(s => s.Hours);
-                        var calculatedAmt = selectedEq != null
-                            ? (decimal)billableHrs * selectedEq.HourlyRate : 0m;
+                        var calculatedAmt = _form.ServiceActivityId is int && _serviceHourlyRate > 0
+                            ? (decimal)billableHrs * _serviceHourlyRate : 0m;
                     }
                     <MudPaper Elevation="2" Class="pa-3" Style="background-color: #f5f5f5">
                         <MudText Typo="Typo.subtitle2">Billing Summary</MudText>
@@ -137,28 +172,28 @@
                                 </span>
                                 <span class="mud-text-secondary"> non-billable</span>
                             </MudText>
-                            @if (selectedEq != null && calculatedAmt > 0)
+                            @if (_form.ServiceActivityId is int && calculatedAmt > 0)
                             {
                                 <MudText>
                                     <span style="color:#1976d2; font-weight:600">
-                                        ≈ @billSym@calculatedAmt.ToString("N2")
+                                        ≈ @_centerCurrencySymbol@calculatedAmt.ToString("N2")
                                     </span>
                                     <span class="mud-text-secondary">
-                                        (@billableHrs.ToString("N1") h × @billSym@selectedEq.HourlyRate.ToString("N0")/hr)
+                                        (@billableHrs.ToString("N1") h × @_centerCurrencySymbol@_serviceHourlyRate.ToString("N2")/hr)
                                     </span>
                                 </MudText>
                             }
-                            else if (selectedEq == null && billableHrs > 0)
+                            else if (_form.ServiceActivityId == null && billableHrs > 0)
                             {
                                 <MudText Class="mud-text-secondary">
-                                    Select equipment to calculate amount
+                                    Select a service activity for invoice labor (Working hours × service rate + fees).
                                 </MudText>
                             }
                         </MudStack>
                     </MudPaper>
 
                     <MudNumericField @bind-Value="_form.TotalMaterialCost"
-                                     Label="@($"Materials / other charges — {_centerCurrencySymbol} (excludes rental; rental uses Working spans × equipment rate at invoice)")"
+                                     Label="@($"Materials / other charges — {_centerCurrencySymbol} (invoice adds service labor from time logs when applicable)")"
                                      Format="N2" FullWidth="true"
                                      For="@(() => _form.TotalMaterialCost)" />
 
@@ -184,6 +219,8 @@
                                 @_detail.ScheduledStartDate.ToString("yyyy-MM-dd HH:mm") →
                                 @_detail.ScheduledEndDate.ToString("yyyy-MM-dd HH:mm")
                                 · @_detail.CurrencySymbol@_detail.TotalMaterialCost.ToString("N2")
+                                · Service: @(_detail.ServiceActivityName ?? "—")
+                                · Tractor: @(_detail.TractorName ?? "—") · Implement: @(_detail.ImplementName ?? "—")
                             </MudText>
                         </MudPaper>
                         <MudDivider />
@@ -253,6 +290,8 @@
     private WorkOrderDetail? _detail;
 
     private List<EquipmentResponse> _equipmentList = new();
+    private List<ServiceActivityRow> _serviceActivities = new();
+    private List<CenterResponse> _centerList = new();
     private List<UserResponse> _staffList = new();
     private List<CustomerResponse> _customerList = new();
 
@@ -260,6 +299,16 @@
     private bool _loadingLookups = false;
     private string? _error;
     private string _centerCurrencySymbol = "₹";
+    private bool _isSuperUser;
+    private decimal _serviceHourlyRate;
+
+    private int EffectiveCenterId => _form.CenterId ?? 0;
+
+    private IEnumerable<EquipmentResponse> _implementsForCenter =>
+        _equipmentList.Where(e => e.IsImplement && e.CenterId == EffectiveCenterId);
+
+    private IEnumerable<EquipmentResponse> _tractorsForCenter =>
+        _equipmentList.Where(e => !e.IsImplement && e.CenterId == EffectiveCenterId);
 
     private List<SpanEntry> _spans = new() { new SpanEntry() };
 
@@ -301,15 +350,26 @@
                 .ToList();
 
             var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var centerId) && centerId > 0)
-                _form.CenterId = centerId;
-
-            if (_form.CenterId is > 0)
+            _isSuperUser = auth.User.IsInRole("SuperUser");
+            if (_isSuperUser)
             {
-                var c = await CenterService.GetByIdAsync(_form.CenterId.Value);
-                if (c != null && !string.IsNullOrWhiteSpace(c.CurrencySymbol))
-                    _centerCurrencySymbol = c.CurrencySymbol;
+                try
+                {
+                    _centerList = await CenterService.GetAllAsync();
+                    if (_form.CenterId is null or 0 && _centerList.Count > 0)
+                        _form.CenterId = _centerList[0].Id;
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Could not load centers: {ex.Message}", Severity.Warning);
+                }
             }
+            else if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var centerId) && centerId > 0)
+            {
+                _form.CenterId = centerId;
+            }
+
+            await RefreshServiceActivitiesAndCurrencyAsync();
         }
         catch (Exception ex)
         {
@@ -331,6 +391,46 @@
                     _centerCurrencySymbol = _detail.CurrencySymbol;
             }
         }
+    }
+
+    private async Task RefreshServiceActivitiesAndCurrencyAsync()
+    {
+        if (EffectiveCenterId <= 0)
+        {
+            _serviceActivities = new List<ServiceActivityRow>();
+            return;
+        }
+
+        try
+        {
+            _serviceActivities = await ServiceActivityService.GetAllAsync(_isSuperUser ? EffectiveCenterId : null);
+            var c = await CenterService.GetByIdAsync(EffectiveCenterId);
+            if (c != null && !string.IsNullOrWhiteSpace(c.CurrencySymbol))
+                _centerCurrencySymbol = c.CurrencySymbol;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load service activities: {ex.Message}", Severity.Warning);
+            _serviceActivities = new List<ServiceActivityRow>();
+        }
+    }
+
+    private async Task OnWoCenterChangedAsync(int value)
+    {
+        _form.CenterId = value == 0 ? null : value;
+        _form.ServiceActivityId = null;
+        _form.ImplementId = null;
+        _form.TractorId = null;
+        _serviceHourlyRate = 0;
+        await RefreshServiceActivitiesAndCurrencyAsync();
+    }
+
+    private Task OnServiceActivityChangedAsync(int? id)
+    {
+        _form.ServiceActivityId = id;
+        var a = _serviceActivities.FirstOrDefault(x => x.Id == id);
+        _serviceHourlyRate = a?.BaseRatePerHour ?? 0;
+        return Task.CompletedTask;
     }
 
     private void AddSpan() => _spans.Add(new SpanEntry { Date = DateTime.Today });

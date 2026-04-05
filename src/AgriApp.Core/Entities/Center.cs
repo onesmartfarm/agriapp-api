@@ -21,6 +21,7 @@ public class Center : IAuditable
     public User? AdminUser { get; set; }
     public ICollection<User> Users { get; set; } = new List<User>();
     public ICollection<Equipment> Equipment { get; set; } = new List<Equipment>();
+    public ICollection<ServiceActivity> ServiceActivities { get; set; } = new List<ServiceActivity>();
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
     public ICollection<Vendor> Vendors { get; set; } = new List<Vendor>();
     public ICollection<WorkOrder> WorkOrders { get; set; } = new List<WorkOrder>();

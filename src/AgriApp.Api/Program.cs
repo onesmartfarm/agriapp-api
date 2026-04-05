@@ -86,6 +86,7 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<VendorService>();
+builder.Services.AddScoped<ServiceActivityService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -195,15 +196,22 @@ static async Task SeedDatabase(WebApplication app)
     await EnsureCustomerAsync(db, "Edison Property Management", edison.Id);
     await db.SaveChangesAsync();
 
+    await EnsureServiceActivityAsync(db, "Rotavation", "Field rotavation service", 800m, sangola.Id);
+    await EnsureServiceActivityAsync(db, "Cultivation", "Soil cultivation service", 700m, sangola.Id);
+    await EnsureServiceActivityAsync(db, "Sowing", "Sowing service", 900m, sangola.Id);
+    await db.SaveChangesAsync();
+
     var deereVendorId = (await db.Vendors.IgnoreQueryFilters().AsNoTracking()
         .FirstAsync(v => v.Name == "John Deere Sangola" && v.CenterId == sangola.Id)).Id;
     var mazdaVendorId = (await db.Vendors.IgnoreQueryFilters().AsNoTracking()
         .FirstAsync(v => v.Name == "Mazda Financial Services (Edison)" && v.CenterId == edison.Id)).Id;
 
     await EnsureEquipmentAsync(db, "John Deere 5405 Tractor", EquipmentCategory.Tractor, 1500.00m,
-        sangola.Id, deereVendorId);
+        sangola.Id, deereVendorId, isImplement: false);
+    await EnsureEquipmentAsync(db, "Heavy Rotavator (7 ft)", EquipmentCategory.Tractor, 400.00m,
+        sangola.Id, deereVendorId, isImplement: true);
     await EnsureEquipmentAsync(db, "2025 Mazda CX-90 PHEV", EquipmentCategory.Vehicle, 85.00m,
-        edison.Id, mazdaVendorId);
+        edison.Id, mazdaVendorId, isImplement: false);
     await db.SaveChangesAsync();
 
     await EnsureDemoUsersAsync(db, sangola.Id, edison.Id);
@@ -265,7 +273,8 @@ static async Task EnsureEquipmentAsync(
     EquipmentCategory category,
     decimal hourlyRate,
     int centerId,
-    int vendorId)
+    int vendorId,
+    bool isImplement = false)
 {
     if (await db.Equipment.IgnoreQueryFilters().AnyAsync(e => e.Name == name && e.CenterId == centerId))
         return;
@@ -277,6 +286,28 @@ static async Task EnsureEquipmentAsync(
         HourlyRate = hourlyRate,
         CenterId = centerId,
         VendorId = vendorId,
+        IsImplement = isImplement,
+        CreatedAt = DateTime.UtcNow
+    });
+}
+
+static async Task EnsureServiceActivityAsync(
+    AgriDbContext db,
+    string name,
+    string description,
+    decimal baseRatePerHour,
+    int centerId)
+{
+    if (await db.ServiceActivities.IgnoreQueryFilters()
+            .AnyAsync(a => a.Name == name && a.CenterId == centerId))
+        return;
+
+    db.ServiceActivities.Add(new ServiceActivity
+    {
+        Name = name,
+        Description = description,
+        BaseRatePerHour = baseRatePerHour,
+        CenterId = centerId,
         CreatedAt = DateTime.UtcNow
     });
 }

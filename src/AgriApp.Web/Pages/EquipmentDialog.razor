@@ -33,6 +33,8 @@
                                  Format="N2" FullWidth="true"
                                  For="@(() => _form.HourlyRate)" />
 
+                <MudSwitch @bind-Value="_form.IsImplement" Color="Color.Primary" Label="Implement (attachment / tool, not tractor or power unit)" />
+
                 @if (IsCreate && _isSuperUser)
                 {
                     <MudSelect T="int" Value="_form.CenterId" ValueChanged="OnCreateCenterChangedAsync"
@@ -179,10 +181,11 @@
                     _form.Category = eq.Category;
                     _form.HourlyRate = eq.HourlyRate;
                     _form.CenterId = eq.CenterId;
-                    _form.VendorId = eq.VendorId;
-                    _form.PurchaseCost = eq.PurchaseCost;
-                    _purchaseDate = eq.PurchaseDate?.ToLocalTime();
-                    _editCurrencySymbol = string.IsNullOrWhiteSpace(eq.CurrencySymbol) ? "₹" : eq.CurrencySymbol;
+                _form.VendorId = eq.VendorId;
+                _form.PurchaseCost = eq.PurchaseCost;
+                _purchaseDate = eq.PurchaseDate?.ToLocalTime();
+                _form.IsImplement = eq.IsImplement;
+                _editCurrencySymbol = string.IsNullOrWhiteSpace(eq.CurrencySymbol) ? "₹" : eq.CurrencySymbol;
                 }
             }
             catch (Exception ex)
@@ -228,7 +231,8 @@
                     HourlyRate = _form.HourlyRate,
                     VendorId = _form.VendorId,
                     PurchaseCost = _form.PurchaseCost,
-                    PurchaseDate = _form.PurchaseDate
+                    PurchaseDate = _form.PurchaseDate,
+                    IsImplement = _form.IsImplement
                 };
                 var (success, error, _) = await EquipmentService.UpdateAsync(EquipmentId, update);
                 if (success)

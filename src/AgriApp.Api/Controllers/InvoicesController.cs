@@ -36,7 +36,8 @@ public class InvoicesController : ControllerBase
 
     /// <summary>
     /// Generate a Draft invoice from a Completed WorkOrder.
-    /// TotalAmount = (TotalMaterialCost + AdditionalFees) + 18% GST.
+    /// When the work order has Working time logs, base labor = sum(Working hours) × ServiceActivity.BaseRatePerHour + AdditionalFees (requires ServiceActivity on the work order).
+    /// With no time logs, base = TotalMaterialCost + AdditionalFees. GST is applied to the base amount.
     /// Only one invoice may be generated per WorkOrder.
     /// </summary>
     [HttpPost("generate")]

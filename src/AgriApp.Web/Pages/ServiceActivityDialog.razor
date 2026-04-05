@@ -1,0 +1,173 @@
+@using AgriApp.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IServiceActivityService ServiceActivityService
+@inject ICenterService CenterService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm id="saForm" Model="_createForm" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                @if (IsCreate && _isSuperUser)
+                {
+                    <MudSelect T="int" Value="_createForm.CenterId" ValueChanged="OnCenterChangedAsync"
+                               Label="Center"
+                               FullWidth="true" Disabled="_loadingCenters">
+                        @foreach (var c in _centerList)
+                        {
+                            <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (IsCreate && _centerLabel != null)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@_centerLabel</MudText>
+                }
+
+                <MudTextField @bind-Value="_createForm.Name" Label="Name" FullWidth="true"
+                              For="@(() => _createForm.Name)" />
+                <MudTextField @bind-Value="_createForm.Description" Label="Description" Lines="2" FullWidth="true" />
+                <MudNumericField @bind-Value="_createForm.BaseRatePerHour"
+                                 Label="@($"Base rate ({_currencySymbol}/hr)")"
+                                 Format="N2" FullWidth="true"
+                                 For="@(() => _createForm.BaseRatePerHour)" />
+
+                <ValidationSummary />
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
+        <MudButton form="saForm" ButtonType="ButtonType.Submit" Color="Color.Primary"
+                   Variant="Variant.Filled" Disabled="_saving">
+            @(_saving ? "Saving…" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public bool IsCreate { get; set; } = true;
+
+    [Parameter]
+    public int ActivityId { get; set; }
+
+    private readonly CreateServiceActivityForm _createForm = new();
+    private bool _saving;
+    private string? _error;
+    private bool _isSuperUser;
+    private List<CenterResponse> _centerList = new();
+    private bool _loadingCenters;
+    private string? _centerLabel;
+    private string _currencySymbol = "₹";
+
+    private async Task OnCenterChangedAsync(int value)
+    {
+        _createForm.CenterId = value;
+        await SyncCurrencyAsync();
+    }
+
+    private async Task Save()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            if (IsCreate)
+            {
+                var (ok, err, _) = await ServiceActivityService.CreateAsync(_createForm);
+                if (ok)
+                {
+                    Snackbar.Add("Service activity created.", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(true));
+                }
+                else
+                    _error = err;
+            }
+            else
+            {
+                var update = new UpdateServiceActivityForm
+                {
+                    Name = _createForm.Name,
+                    Description = _createForm.Description,
+                    BaseRatePerHour = _createForm.BaseRatePerHour
+                };
+                var (ok, err, _) = await ServiceActivityService.UpdateAsync(ActivityId, update);
+                if (ok)
+                {
+                    Snackbar.Add("Service activity updated.", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(true));
+                }
+                else
+                    _error = err;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isSuperUser = auth.User.IsInRole("SuperUser");
+        if (_isSuperUser)
+        {
+            _loadingCenters = true;
+            try
+            {
+                _centerList = await CenterService.GetAllAsync();
+                if (_centerList.Count > 0)
+                    _createForm.CenterId = _centerList[0].Id;
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Could not load centers: {ex.Message}", Severity.Warning);
+            }
+            finally
+            {
+                _loadingCenters = false;
+            }
+        }
+        else if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var cid) && cid > 0)
+        {
+            _createForm.CenterId = cid;
+            _centerLabel = "Activity will be created for your center.";
+        }
+
+        await SyncCurrencyAsync();
+
+        if (!IsCreate && ActivityId > 0)
+        {
+            var row = await ServiceActivityService.GetByIdAsync(ActivityId);
+            if (row != null)
+            {
+                _createForm.Name = row.Name;
+                _createForm.Description = row.Description;
+                _createForm.BaseRatePerHour = row.BaseRatePerHour;
+                _createForm.CenterId = row.CenterId;
+                _currencySymbol = row.CurrencySymbol;
+            }
+        }
+    }
+
+    private async Task SyncCurrencyAsync()
+    {
+        if (_createForm.CenterId <= 0) return;
+        var c = await CenterService.GetByIdAsync(_createForm.CenterId);
+        if (c != null && !string.IsNullOrWhiteSpace(c.CurrencySymbol))
+            _currencySymbol = c.CurrencySymbol;
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+}

@@ -22,6 +22,8 @@ public class CreateEquipmentRequest
     public decimal? PurchaseCost { get; set; }
 
     public DateTime? PurchaseDate { get; set; }
+
+    public bool IsImplement { get; set; }
 }
 
 public class UpdateEquipmentRequest
@@ -39,6 +41,8 @@ public class UpdateEquipmentRequest
     public decimal? PurchaseCost { get; set; }
 
     public DateTime? PurchaseDate { get; set; }
+
+    public bool? IsImplement { get; set; }
 }
 
 public class RentalQuoteRequest
@@ -60,6 +64,7 @@ public class EquipmentApiResponse
     public int? VendorId { get; set; }
     public decimal? PurchaseCost { get; set; }
     public DateTime? PurchaseDate { get; set; }
+    public bool IsImplement { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }

@@ -33,7 +33,8 @@ public class EquipmentService
         int centerId,
         int? vendorId = null,
         decimal? purchaseCost = null,
-        DateTime? purchaseDate = null)
+        DateTime? purchaseDate = null,
+        bool isImplement = false)
     {
         var equipment = new Equipment
         {
@@ -44,6 +45,7 @@ public class EquipmentService
             VendorId = vendorId,
             PurchaseCost = purchaseCost,
             PurchaseDate = purchaseDate,
+            IsImplement = isImplement,
             CreatedAt = DateTime.UtcNow
         };
         var created = await _repo.CreateAsync(equipment);
@@ -59,7 +61,8 @@ public class EquipmentService
         decimal? hourlyRate,
         int? vendorId = null,
         decimal? purchaseCost = null,
-        DateTime? purchaseDate = null)
+        DateTime? purchaseDate = null,
+        bool? isImplement = null)
     {
         var updated = await _repo.UpdateAsync(id, equipment =>
         {
@@ -69,6 +72,7 @@ public class EquipmentService
             if (vendorId.HasValue) equipment.VendorId = vendorId.Value;
             if (purchaseCost.HasValue) equipment.PurchaseCost = purchaseCost.Value;
             if (purchaseDate.HasValue) equipment.PurchaseDate = purchaseDate.Value;
+            if (isImplement.HasValue) equipment.IsImplement = isImplement.Value;
         });
         if (updated == null) return null;
         var reloaded = await _repo.GetByIdAsync(updated.Id);
@@ -100,6 +104,7 @@ public class EquipmentService
             VendorId = e.VendorId,
             PurchaseCost = e.PurchaseCost,
             PurchaseDate = e.PurchaseDate,
+            IsImplement = e.IsImplement,
             CreatedAt = e.CreatedAt,
             UpdatedAt = e.UpdatedAt
         };
