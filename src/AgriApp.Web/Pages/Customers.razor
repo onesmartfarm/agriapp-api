@@ -1,0 +1,111 @@
+@page "/customers"
+@using Microsoft.AspNetCore.Components.Authorization
+@using AgriApp.Web.Services
+@inject ICustomerService CustomerService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<AuthorizeView Roles="SuperUser,Manager,Sales">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">Customers</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
+                               OnClick="OpenCreateDialog">
+                        Add customer
+                    </MudButton>
+                </MudStack>
+
+                @if (_loading)
+                {
+                    <MudProgressCircular indeterminate="true" />
+                }
+                else if (_rows == null || _rows.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No customers found.</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="_rows" Striped="true" Bordered="true" Dense="true" Filterable="true"
+                                 RowClick="OnRowClick" T="CustomerResponse">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Name" Title="Name" Sortable="true" />
+                            <PropertyColumn Property="x => x.Phone" Title="Mobile" Sortable="true" />
+                            <TemplateColumn Title="Pending balance" Sortable="true" SortBy="@(x => x.PendingBalance)">
+                                <CellTemplate Context="c">
+                                    <MudText Typo="Typo.body2"
+                                             Color="@(c.Item.PendingBalance > 0 ? Color.Error : Color.Default)">
+                                        @c.Item.CurrencySymbol @c.Item.PendingBalance.ToString("N2")
+                                    </MudText>
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Actions" Sortable="false">
+                                <CellTemplate Context="a">
+                                    <div @onclick:stopPropagation="true">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" title="Edit"
+                                                       OnClick="@(() => OpenEditDialog(a.Item.Id))" />
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudStack>
+        </MudContainer>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to access this page.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<CustomerResponse>? _rows;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _rows = await CustomerService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _rows = null;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<CustomerResponse> args)
+        => Navigation.NavigateTo($"/customers/{args.Item.Id}");
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<CustomerDialog>("Add customer",
+            new DialogParameters<CustomerDialog> { { x => x.IsCreate, true } });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await LoadAsync();
+    }
+
+    private async Task OpenEditDialog(int id)
+    {
+        var dialog = await DialogService.ShowAsync<CustomerDialog>("Edit customer",
+            new DialogParameters<CustomerDialog>
+            {
+                { x => x.IsCreate, false },
+                { x => x.CustomerId, id }
+            });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await LoadAsync();
+    }
+}

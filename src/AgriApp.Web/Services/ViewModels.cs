@@ -64,9 +64,26 @@ public record CustomerResponse(
     string? Phone,
     string? Email,
     string? Address,
+    string? Notes,
     int CenterId,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    decimal PendingBalance,
+    string CurrencySymbol);
+
+public record CustomerFinancialSummaryResponse(
+    int TotalWorkOrders,
+    decimal TotalInvoiced,
+    decimal TotalPaid,
+    decimal PendingBalance,
+    string CurrencySymbol);
+
+public record CustomerLedgerEntryResponse(
+    string Kind,
+    DateTime OccurredAt,
+    string Description,
+    decimal Amount,
+    Guid? InvoiceId,
+    Guid? PaymentId);
 
 public record VendorResponse(
     int Id,
@@ -181,12 +198,19 @@ public record CreateCustomerRequest
 {
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
+
     [MaxLength(20)]
     public string? Phone { get; set; }
+
     [MaxLength(320)]
     public string? Email { get; set; }
+
     [MaxLength(500)]
     public string? Address { get; set; }
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
+
     public int CenterId { get; set; }
 }
 
@@ -194,12 +218,18 @@ public record UpdateCustomerRequest
 {
     [MaxLength(200)]
     public string? Name { get; set; }
+
     [MaxLength(20)]
     public string? Phone { get; set; }
+
     [MaxLength(320)]
     public string? Email { get; set; }
+
     [MaxLength(500)]
     public string? Address { get; set; }
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
 }
 
 public record CreateVendorRequest

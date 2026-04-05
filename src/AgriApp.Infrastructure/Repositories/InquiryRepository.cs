@@ -25,6 +25,16 @@ public class InquiryRepository
             .Include(i => i.Salesperson)
             .ToListAsync();
 
+    public async Task<List<Inquiry>> GetByCustomerIdWithNavigationsAsync(int customerId)
+        => await _context.Inquiries
+            .AsNoTracking()
+            .Include(i => i.Customer)
+            .Include(i => i.Equipment)
+            .Include(i => i.Salesperson)
+            .Where(i => i.CustomerId == customerId)
+            .OrderByDescending(i => i.Id)
+            .ToListAsync();
+
     public async Task<Dictionary<int, string>> GetCenterNamesAsync(IEnumerable<int> centerIds)
     {
         var ids = centerIds.Distinct().ToList();

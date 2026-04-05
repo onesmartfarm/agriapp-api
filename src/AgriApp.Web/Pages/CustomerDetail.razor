@@ -1,0 +1,92 @@
+@page "/customers/{Id:int}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using AgriApp.Web.Services
+@inject ICustomerService CustomerService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+<AuthorizeView Roles="SuperUser,Manager,Sales">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+            @if (_loadingHeader)
+            {
+                <MudProgressCircular indeterminate="true" />
+            }
+            else if (_customer == null)
+            {
+                <MudAlert Severity="Severity.Warning">Customer not found.</MudAlert>
+                <MudButton ButtonType="ButtonType.Button" Class="mt-2" Variant="Variant.Text" OnClick="@(() => Navigation.NavigateTo("/customers"))">
+                    Back to list
+                </MudButton>
+            }
+            else
+            {
+                <MudStack Spacing="2" Class="mb-4">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudButton ButtonType="ButtonType.Button" StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text"
+                                       OnClick="@(() => Navigation.NavigateTo("/customers"))">
+                                Back
+                            </MudButton>
+                            <MudText Typo="Typo.h5">@_customer.Name</MudText>
+                        </MudStack>
+                        <AuthorizeView Roles="SuperUser,Manager" Context="editAuth">
+                            <Authorized>
+                                <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
+                                           OnClick="OpenEditDialog">
+                                    Edit
+                                </MudButton>
+                            </Authorized>
+                        </AuthorizeView>
+                    </MudStack>
+                    @if (!string.IsNullOrWhiteSpace(_customer.Phone))
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Mobile: @_customer.Phone</MudText>
+                    }
+                </MudStack>
+
+                <CustomerProfile CustomerId="Id" @key="_profileKey" />
+            }
+        </MudContainer>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to view this customer.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private CustomerResponse? _customer;
+    private bool _loadingHeader;
+    private int _profileKey;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loadingHeader = true;
+        try
+        {
+            _customer = await CustomerService.GetByIdAsync(Id);
+        }
+        finally
+        {
+            _loadingHeader = false;
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        var dialog = await DialogService.ShowAsync<CustomerDialog>("Edit customer",
+            new DialogParameters<CustomerDialog>
+            {
+                { x => x.IsCreate, false },
+                { x => x.CustomerId, Id }
+            });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            _customer = await CustomerService.GetByIdAsync(Id);
+            _profileKey++;
+        }
+    }
+}

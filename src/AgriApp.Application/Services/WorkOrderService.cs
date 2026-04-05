@@ -40,6 +40,20 @@ public class WorkOrderService
         return w == null ? null : MapToResponse(w);
     }
 
+    public async Task<List<WorkOrderResponse>> GetByCustomerIdAsync(int customerId)
+    {
+        var rows = await _db.WorkOrders
+            .AsNoTracking()
+            .Include(w => w.Center)
+            .Include(w => w.Implement)
+            .Include(w => w.Tractor)
+            .Include(w => w.ServiceActivity)
+            .Where(w => w.CustomerId == customerId)
+            .OrderByDescending(w => w.Id)
+            .ToListAsync();
+        return rows.Select(MapToResponse).ToList();
+    }
+
     public async Task<WorkOrderResponse> CreateWorkOrderAsync(CreateWorkOrderRequest request, int centerId)
     {
         if (!Enum.TryParse<WorkOrderType>(request.Type, out var type))

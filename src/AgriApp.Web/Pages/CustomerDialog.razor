@@ -1,0 +1,171 @@
+@using AgriApp.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICustomerService CustomerService
+@inject ICenterService CenterService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm id="custForm" Model="_form" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <MudStack Spacing="3">
+                @if (IsCreate && _isSuperUser)
+                {
+                    @if (_centerList.Count == 0 && !_loadingCenters)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">No centers available.</MudAlert>
+                    }
+                    <MudSelect T="int" Value="_form.CenterId" ValueChanged="OnCenterChangedAsync"
+                               Label="Center" FullWidth="true" Disabled="_loadingCenters || _centerList.Count == 0">
+                        @foreach (var c in _centerList)
+                        {
+                            <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (IsCreate && _centerLabel != null)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@_centerLabel</MudText>
+                }
+                else if (IsCreate && !_isSuperUser && _form.CenterId <= 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">Your account has no center assignment.</MudAlert>
+                }
+
+                <MudTextField @bind-Value="_form.Name" Label="Name" FullWidth="true" For="@(() => _form.Name)" />
+                <MudTextField @bind-Value="_form.Phone" Label="Mobile" FullWidth="true" For="@(() => _form.Phone)" />
+                <MudTextField @bind-Value="_form.Email" Label="Email (optional)" FullWidth="true" For="@(() => _form.Email)" />
+                <MudTextField @bind-Value="_form.Address" Label="Address" FullWidth="true" Lines="2" For="@(() => _form.Address)" />
+                <MudTextField @bind-Value="_form.Notes" Label="Notes (farm details, soil, etc.)" FullWidth="true" Lines="3"
+                              For="@(() => _form.Notes)" />
+
+                <ValidationSummary />
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel">Cancel</MudButton>
+        <MudButton form="custForm" ButtonType="ButtonType.Submit" Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="_saving || (IsCreate && _form.CenterId <= 0)">
+            @(_saving ? "Saving…" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public bool IsCreate { get; set; } = true;
+
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    private readonly CreateCustomerRequest _form = new();
+    private bool _saving;
+    private string? _error;
+    private bool _isSuperUser;
+    private List<CenterResponse> _centerList = new();
+    private bool _loadingCenters;
+    private string? _centerLabel;
+
+    private async Task OnCenterChangedAsync(int value)
+    {
+        _form.CenterId = value;
+        await Task.CompletedTask;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isSuperUser = auth.User.IsInRole("SuperUser");
+        if (_isSuperUser && IsCreate)
+        {
+            _loadingCenters = true;
+            try
+            {
+                _centerList = await CenterService.GetAllAsync();
+                if (_centerList.Count > 0)
+                    _form.CenterId = _centerList[0].Id;
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Could not load centers: {ex.Message}", Severity.Warning);
+            }
+            finally
+            {
+                _loadingCenters = false;
+            }
+        }
+        else if (IsCreate && int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var cid) && cid > 0)
+        {
+            _form.CenterId = cid;
+            _centerLabel = "Customer will be created for your center.";
+        }
+
+        if (!IsCreate && CustomerId > 0)
+        {
+            var row = await CustomerService.GetByIdAsync(CustomerId);
+            if (row != null)
+            {
+                _form.Name = row.Name;
+                _form.Phone = row.Phone;
+                _form.Email = row.Email;
+                _form.Address = row.Address;
+                _form.Notes = row.Notes;
+                _form.CenterId = row.CenterId;
+            }
+        }
+    }
+
+    private async Task Save()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            if (IsCreate)
+            {
+                var (ok, err, _) = await CustomerService.CreateAsync(_form);
+                if (ok)
+                {
+                    Snackbar.Add("Customer created.", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(true));
+                }
+                else
+                    _error = err;
+            }
+            else
+            {
+                var update = new UpdateCustomerRequest
+                {
+                    Name = _form.Name,
+                    Phone = _form.Phone,
+                    Email = _form.Email,
+                    Address = _form.Address,
+                    Notes = _form.Notes
+                };
+                var (ok, err, _) = await CustomerService.UpdateAsync(CustomerId, update);
+                if (ok)
+                {
+                    Snackbar.Add("Customer updated.", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(true));
+                }
+                else
+                    _error = err;
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+}

@@ -9,6 +9,10 @@ public class Customer : ICenterScoped, IAuditable
     public string? Phone { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
+
+    /// <summary>Farm-specific notes (soil, location quirks, etc.).</summary>
+    public string? Notes { get; set; }
+
     public int CenterId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

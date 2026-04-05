@@ -101,6 +101,7 @@ public class AgriDbContext : DbContext
             entity.Property(e => e.Phone).HasMaxLength(20);
             entity.Property(e => e.Email).HasMaxLength(320);
             entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Notes).HasMaxLength(2000);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
 
             entity.HasOne(e => e.Center)

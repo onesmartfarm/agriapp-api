@@ -1,0 +1,192 @@
+@using AgriApp.Web.Services
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+    <MudTabPanel Text="General">
+        @if (_summaryLoading)
+        {
+            <MudProgressCircular indeterminate="true" />
+        }
+        else if (_summary == null)
+        {
+            <MudAlert Severity="Severity.Warning">Could not load financial summary.</MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Total work orders</MudText>
+                        <MudText Typo="Typo.h4">@_summary.TotalWorkOrders</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Total invoiced</MudText>
+                        <MudText Typo="Typo.h4">@_summary.CurrencySymbol @_summary.TotalInvoiced.ToString("N2")</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Total paid</MudText>
+                        <MudText Typo="Typo.h4">@_summary.CurrencySymbol @_summary.TotalPaid.ToString("N2")</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="1">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Current balance</MudText>
+                        <MudText Typo="Typo.h4" Color="@(_summary.PendingBalance > 0 ? Color.Error : Color.Default)">
+                            @(_summary.CurrencySymbol) @(_summary.PendingBalance.ToString("N2"))
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="History">
+        @if (_inquiriesLoading)
+        {
+            <MudProgressCircular indeterminate="true" />
+        }
+        else if (_inquiries.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No inquiries for this customer.</MudAlert>
+        }
+        else
+        {
+            <MudDataGrid Items="_inquiries" Dense="true" Striped="true" Bordered="true">
+                <Columns>
+                    <PropertyColumn Property="x => x.Id" Title="ID" />
+                    <PropertyColumn Property="x => x.EquipmentName" Title="Equipment" />
+                    <PropertyColumn Property="x => x.SalespersonName" Title="Salesperson" />
+                    <PropertyColumn Property="x => x.Status" Title="Status" />
+                    <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd" />
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Active jobs">
+        @if (_workOrdersLoading)
+        {
+            <MudProgressCircular indeterminate="true" />
+        }
+        else if (_workOrders.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No work orders for this customer.</MudAlert>
+        }
+        else
+        {
+            <MudDataGrid Items="_workOrders" Dense="true" Striped="true" Bordered="true" T="WorkOrderListItem">
+                <Columns>
+                    <PropertyColumn Property="x => x.Id" Title="ID" />
+                    <PropertyColumn Property="x => x.Description" Title="Description" />
+                    <PropertyColumn Property="x => x.ScheduledStartDate" Title="Start" Format="yyyy-MM-dd HH:mm" />
+                    <PropertyColumn Property="x => x.Status" Title="Status">
+                        <CellTemplate Context="s">
+                            <span style="padding: 4px 8px; border-radius: 4px; color: white; background-color: @StatusBadgeHex(s.Item.Status); font-size: 0.85em;">
+                                @s.Item.Status
+                            </span>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Materials">
+                        <CellTemplate Context="w">
+                            @w.Item.CurrencySymbol @w.Item.TotalMaterialCost.ToString("N2")
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Ledger">
+        @if (_ledgerLoading)
+        {
+            <MudProgressCircular indeterminate="true" />
+        }
+        else if (_ledger.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No invoices or payments yet.</MudAlert>
+        }
+        else
+        {
+            <MudDataGrid Items="_ledger" Dense="true" Striped="true" Bordered="true">
+                <Columns>
+                    <PropertyColumn Property="x => x.Kind" Title="Type" />
+                    <PropertyColumn Property="x => x.OccurredAt" Title="Date" Format="yyyy-MM-dd HH:mm" />
+                    <PropertyColumn Property="x => x.Description" Title="Description" />
+                    <TemplateColumn Title="Amount">
+                        <CellTemplate Context="l">
+                            <MudText Typo="Typo.body2" Color="@(l.Item.Kind == "Invoice" ? Color.Error : Color.Success)">
+                                @(_ledgerCurrency) @(l.Item.Amount.ToString("N2"))
+                            </MudText>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter]
+    public int CustomerId { get; set; }
+
+    private CustomerFinancialSummaryResponse? _summary;
+    private bool _summaryLoading = true;
+    private List<InquiryResponse> _inquiries = new();
+    private bool _inquiriesLoading = true;
+    private List<WorkOrderListItem> _workOrders = new();
+    private bool _workOrdersLoading = true;
+    private List<CustomerLedgerEntryResponse> _ledger = new();
+    private bool _ledgerLoading = true;
+    private string _ledgerCurrency = "₹";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAllAsync();
+    }
+
+    private async Task LoadAllAsync()
+    {
+        _summaryLoading = _inquiriesLoading = _workOrdersLoading = _ledgerLoading = true;
+        try
+        {
+            var summaryTask = CustomerService.GetSummaryAsync(CustomerId);
+            var invTask = CustomerService.GetInquiriesForCustomerAsync(CustomerId);
+            var woTask = CustomerService.GetWorkOrdersForCustomerAsync(CustomerId);
+            var ledgerTask = CustomerService.GetLedgerAsync(CustomerId);
+            await Task.WhenAll(summaryTask, invTask, woTask, ledgerTask);
+
+            _summary = await summaryTask;
+            _inquiries = await invTask;
+            _workOrders = await woTask;
+            _ledger = await ledgerTask;
+            if (_summary != null)
+                _ledgerCurrency = string.IsNullOrWhiteSpace(_summary.CurrencySymbol) ? "₹" : _summary.CurrencySymbol;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _summaryLoading = _inquiriesLoading = _workOrdersLoading = _ledgerLoading = false;
+        }
+    }
+
+    private static string StatusBadgeHex(string status) =>
+        Enum.TryParse<WorkStatus>(status, ignoreCase: true, out var s)
+            ? s switch
+            {
+                WorkStatus.Scheduled => "#2196f3",
+                WorkStatus.InProgress => "#ff9800",
+                WorkStatus.Completed => "#4caf50",
+                WorkStatus.Cancelled => "#f44336",
+                WorkStatus.Pending => "#9e9e9e",
+                _ => "#9e9e9e"
+            }
+            : "#9e9e9e";
+}

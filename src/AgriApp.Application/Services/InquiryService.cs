@@ -32,6 +32,15 @@ public class InquiryService
         return ToApiResponse(inquiry, centerNames);
     }
 
+    public async Task<List<InquiryApiResponse>> GetByCustomerIdAsync(int customerId)
+    {
+        var rows = await _repo.GetByCustomerIdWithNavigationsAsync(customerId);
+        if (rows.Count == 0)
+            return new List<InquiryApiResponse>();
+        var centerNames = await _repo.GetCenterNamesAsync(rows.Select(r => r.CenterId));
+        return rows.Select(i => ToApiResponse(i, centerNames)).ToList();
+    }
+
     public async Task<Inquiry> CreateAsync(int customerId, int equipmentId, int salespersonId, int centerId)
     {
         if (_currentUser.Role == Role.Sales && salespersonId != _currentUser.UserId)

@@ -41,6 +41,61 @@ public class CustomerService : ICustomerService
         }
     }
 
+    public async Task<CustomerFinancialSummaryResponse?> GetSummaryAsync(int customerId)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<CustomerFinancialSummaryResponse>($"api/customers/{customerId}/summary");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load customer {Id} summary", customerId);
+            return null;
+        }
+    }
+
+    public async Task<List<InquiryResponse>> GetInquiriesForCustomerAsync(int customerId)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<InquiryResponse>>($"api/customers/{customerId}/inquiries")
+                   ?? new List<InquiryResponse>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load inquiries for customer {Id}", customerId);
+            throw new ApplicationException("Could not load customer inquiries.", ex);
+        }
+    }
+
+    public async Task<List<WorkOrderListItem>> GetWorkOrdersForCustomerAsync(int customerId)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<WorkOrderListItem>>($"api/customers/{customerId}/workorders")
+                   ?? new List<WorkOrderListItem>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load work orders for customer {Id}", customerId);
+            throw new ApplicationException("Could not load customer work orders.", ex);
+        }
+    }
+
+    public async Task<List<CustomerLedgerEntryResponse>> GetLedgerAsync(int customerId)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<CustomerLedgerEntryResponse>>($"api/customers/{customerId}/ledger")
+                   ?? new List<CustomerLedgerEntryResponse>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load ledger for customer {Id}", customerId);
+            throw new ApplicationException("Could not load customer ledger.", ex);
+        }
+    }
+
     public async Task<(bool Success, string? Error, CustomerResponse? Data)> CreateAsync(CreateCustomerRequest request)
     {
         try
