@@ -13,9 +13,17 @@ using Microsoft.OpenApi.Models;
 using Npgsql;
 using System.Text;
 using System.Text.Json.Serialization;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext();
+});
 
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
@@ -161,6 +169,20 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        if (httpContext.Items.TryGetValue(CorrelationIdMiddleware.HttpContextItemKey, out var correlationObject)
+            && correlationObject is string correlationId)
+        {
+            diagnosticContext.Set("CorrelationId", correlationId);
+        }
+    };
+});
+
 app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AgriApp API v1"));
@@ -168,9 +190,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-await SeedDatabase(app);
-
-app.Run();
+try
+{
+    await SeedDatabase(app);
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 static async Task SeedDatabase(WebApplication app)
 {

@@ -27,10 +27,12 @@ builder.Services.AddScoped<AuthenticationStateProvider>(
 
 // ── HTTP message handler (attaches Bearer token) ─────────────────────────────
 builder.Services.AddTransient<JwtAuthorizationMessageHandler>();
+builder.Services.AddTransient<ApiTraceErrorLoggingHandler>();
 
 // ── Named HttpClient for API calls ───────────────────────────────────────────
 builder.Services.AddHttpClient("AgriApi", client =>
     client.BaseAddress = new Uri(apiBase))
+    .AddHttpMessageHandler<ApiTraceErrorLoggingHandler>()
     .AddHttpMessageHandler<JwtAuthorizationMessageHandler>();
 
 // ── Helper to get named HttpClient ───────────────────────────────────────────
