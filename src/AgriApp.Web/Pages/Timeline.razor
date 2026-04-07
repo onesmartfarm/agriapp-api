@@ -1,0 +1,211 @@
+@page "/timeline"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICalendarService CalendarService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<AuthorizeView Roles="Supervisor,Manager,SuperUser">
+    <Authorized>
+        <MudContainer MaxWidth="MaxWidth.False" Class="py-4 timeline-page">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                    <MudText Typo="Typo.h5">Equipment dispatch timeline</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudDatePicker Date="_selectedDate"
+                                       DateChanged="OnDateChangedAsync"
+                                       Label="Day (UTC calendar)"
+                                       PickerVariant="PickerVariant.Dialog"
+                                       Editable="true"
+                                       DateFormat="yyyy-MM-dd"
+                                       Margin="Margin.Dense" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReloadAsync" Disabled="_loading">
+                            Refresh
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Swimlane view for the selected UTC day. Paired tractor + implement jobs share a highlighted border. Breakdowns come from work-order time logs.
+                </MudText>
+
+                <div class="timeline-legend mud-stack mud-stack-row">
+                    <span class="tl-legend-chip tl-legend-work">Work</span>
+                    <span class="tl-legend-chip tl-legend-travel">Travel ±30m</span>
+                    <span class="tl-legend-chip tl-legend-breakdown">Breakdown</span>
+                    <span class="tl-legend-chip tl-legend-pair">Paired job</span>
+                </div>
+
+                @if (_loading)
+                {
+                    <MudProgressCircular indeterminate="true" />
+                }
+                else if (_error != null)
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+                else if (_data?.Equipment is not { Count: > 0 })
+                {
+                    <MudAlert Severity="Severity.Info">No equipment found for your center.</MudAlert>
+                }
+                else
+                {
+                    <div class="timeline-scroll">
+                        <div class="timeline-header-row">
+                            <div class="timeline-corner">Equipment</div>
+                            <div class="timeline-hours">
+                                @for (var h = 0; h < 24; h++)
+                                {
+                                    <span class="timeline-hour-cell">@h</span>
+                                }
+                            </div>
+                        </div>
+
+                        @foreach (var eq in _data!.Equipment)
+                        {
+                            <div class="timeline-row" @key="eq.EquipmentId">
+                                <div class="timeline-equipment-cell">
+                                    <MudText Typo="Typo.body2">@eq.EquipmentName</MudText>
+                                    @if (eq.IsImplement)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">Implement</MudText>
+                                    }
+                                </div>
+                                <div class="timeline-track">
+                                    <div class="timeline-track-inner">
+                                        @foreach (var block in eq.Blocks)
+                                        {
+                                            var tooltip = TooltipFor(block);
+                                            <MudTooltip Text="@tooltip" Placement="Placement.Top">
+                                                <div class="@BlockClass(block)"
+                                                     style="@ComputeStyle(block)"
+                                                     data-pairing="@(string.IsNullOrEmpty(block.PairingKey) ? null : block.PairingKey)"
+                                                     role="button"
+                                                     tabindex="0"
+                                                    @onclick="@(() => OpenWorkOrderAsync(block.WorkOrderId))"
+                                                    @onkeydown="@(e => BlockKeyDown(e, block.WorkOrderId))">
+                                                </div>
+                                            </MudTooltip>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </MudStack>
+        </MudContainer>
+    </Authorized>
+
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">You do not have permission to access this page.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private DateTime? _selectedDate = DateTime.UtcNow.Date;
+    private EquipmentTimelineEnvelopeDto? _data;
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task OnDateChangedAsync(DateTime? d)
+    {
+        _selectedDate = d;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_selectedDate is null)
+        {
+            _error = "Select a date.";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        try
+        {
+            var start = DateTime.SpecifyKind(_selectedDate.Value.Date, DateTimeKind.Utc);
+            var end = start.AddDays(1);
+            _data = await CalendarService.GetEquipmentTimelineAsync(start, end);
+        }
+        catch (Exception ex)
+        {
+            _data = null;
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string TooltipFor(TimelineBlockDto block)
+    {
+        var customer = string.IsNullOrWhiteSpace(block.CustomerName) ? "—" : block.CustomerName;
+        var activity = string.IsNullOrWhiteSpace(block.ServiceActivityName) ? "—" : block.ServiceActivityName;
+        return $"{customer} · {activity} ({block.BlockType})";
+    }
+
+    private string ComputeStyle(TimelineBlockDto block)
+    {
+        if (_data is null)
+            return "display:none";
+
+        var windowMinutes = (_data.RangeEnd - _data.RangeStart).TotalMinutes;
+        if (windowMinutes <= 0)
+            return "display:none";
+
+        var offsetMin = (block.StartTime - _data.RangeStart).TotalMinutes;
+        var durationMin = (block.EndTime - block.StartTime).TotalMinutes;
+        if (durationMin <= 0)
+            return "display:none";
+
+        var left = 100.0 * Math.Clamp(offsetMin, 0, windowMinutes) / windowMinutes;
+        var width = 100.0 * durationMin / windowMinutes;
+        if (left + width > 100)
+            width = 100 - left;
+        if (width <= 0)
+            return "display:none";
+
+        return FormattableString.Invariant($"left:{left:F3}%;width:{width:F3}%;");
+    }
+
+    private static string BlockClass(TimelineBlockDto b) =>
+        b.BlockType switch
+        {
+            "Work" => "timeline-block timeline-block-work",
+            "Travel" => "timeline-block timeline-block-travel",
+            "Breakdown" => "timeline-block timeline-block-breakdown",
+            _ => "timeline-block"
+        };
+
+    private async Task OpenWorkOrderAsync(int? workOrderId)
+    {
+        if (workOrderId is null or <= 0)
+            return;
+
+        var parameters = new DialogParameters<WorkOrderDialog>
+        {
+            { x => x.IsCreate, false },
+            { x => x.WorkOrderId, workOrderId.Value }
+        };
+
+        var dialog = await DialogService.ShowAsync<WorkOrderDialog>("Edit Work Order", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadAsync();
+    }
+
+    private void BlockKeyDown(KeyboardEventArgs e, int? workOrderId)
+    {
+        if (e.Key is "Enter" or " ")
+            _ = OpenWorkOrderAsync(workOrderId);
+    }
+}

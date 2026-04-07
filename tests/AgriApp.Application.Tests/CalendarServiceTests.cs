@@ -168,4 +168,101 @@ public sealed class CalendarServiceTests
             "RangeEnd must reflect the requested query end.");
         Assert.AreEqual(0,          result.TotalScheduled);
     }
+
+    [TestMethod]
+    public async Task GetEquipmentTimeline_IncludesWorkTravelAndBreakdown_OnCorrectLanes()
+    {
+        string dbName = Guid.NewGuid().ToString();
+        using var seedDb = CreateContext(dbName, SuperUser());
+
+        var center = new Center
+        {
+            Name = "Timeline Center",
+            Location = "Here",
+            CurrencySymbol = "$",
+            TimeZoneId = "UTC",
+            CreatedAt = DateTime.UtcNow
+        };
+        seedDb.Centers.Add(center);
+        seedDb.SaveChanges();
+
+        var user = new User
+        {
+            Name = "Operator",
+            Email = $"u_{Guid.NewGuid():N}@test.com",
+            PasswordHash = "x",
+            Role = Role.Staff,
+            CenterId = center.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        seedDb.Users.Add(user);
+        seedDb.SaveChanges();
+
+        var tractor = new Equipment
+        {
+            Name = "Timeline Tractor",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 100m,
+            CenterId = center.Id,
+            IsImplement = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        var implement = new Equipment
+        {
+            Name = "Timeline Implement",
+            Category = EquipmentCategory.Tractor,
+            HourlyRate = 50m,
+            CenterId = center.Id,
+            IsImplement = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        seedDb.Equipment.AddRange(tractor, implement);
+        seedDb.SaveChanges();
+
+        var day = new DateTime(2025, 6, 10, 0, 0, 0, DateTimeKind.Utc);
+        var wo = new WorkOrder
+        {
+            CenterId = center.Id,
+            CustomerId = null,
+            TractorId = tractor.Id,
+            ImplementId = implement.Id,
+            ResponsibleUserId = user.Id,
+            Description = "Field job",
+            Type = WorkOrderType.RentalBooking,
+            Status = WorkStatus.Scheduled,
+            ScheduledStartDate = day.AddHours(10),
+            ScheduledEndDate = day.AddHours(14),
+            TotalMaterialCost = 0m,
+            CreatedAt = DateTime.UtcNow
+        };
+        seedDb.WorkOrders.Add(wo);
+        seedDb.SaveChanges();
+
+        seedDb.WorkOrderTimeLogs.Add(new WorkOrderTimeLog
+        {
+            WorkOrderId = wo.Id,
+            StartTime = day.AddHours(12),
+            EndTime = day.AddHours(12).AddMinutes(30),
+            LogType = WorkTimeLogType.Breakdown,
+            Notes = "Hydraulic leak",
+            CreatedAt = DateTime.UtcNow
+        });
+        seedDb.SaveChanges();
+
+        using var queryDb = CreateContext(dbName, ManagerAt(center.Id));
+        var service = new CalendarService(queryDb);
+
+        var timeline = await service.GetEquipmentTimelineAsync(day, day.AddDays(1));
+
+        var tRow = timeline.Equipment.Single(e => e.EquipmentId == tractor.Id);
+        var iRow = timeline.Equipment.Single(e => e.EquipmentId == implement.Id);
+
+        Assert.IsTrue(tRow.Blocks.Any(b => b.BlockType == "Work" && b.WorkOrderId == wo.Id));
+        Assert.IsTrue(tRow.Blocks.Count(b => b.BlockType == "Travel") >= 1);
+        Assert.IsTrue(tRow.Blocks.Any(b => b.BlockType == "Breakdown"));
+        Assert.AreEqual("wo-pair-" + wo.Id, tRow.Blocks.First(b => b.BlockType == "Work").PairingKey);
+
+        Assert.IsTrue(iRow.Blocks.Any(b => b.BlockType == "Work"));
+        Assert.IsTrue(iRow.Blocks.Any(b => b.BlockType == "Breakdown"));
+    }
 }

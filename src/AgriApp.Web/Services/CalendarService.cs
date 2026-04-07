@@ -141,4 +141,28 @@ public class CalendarService : ICalendarService
 
         return $"Work order #{slot.WorkOrderId}";
     }
+
+    /// <inheritdoc />
+    public async Task<EquipmentTimelineEnvelopeDto?> GetEquipmentTimelineAsync(DateTime rangeStartUtc, DateTime rangeEndUtc)
+    {
+        if (rangeEndUtc <= rangeStartUtc)
+            throw new ArgumentException("End must be after start.");
+
+        if ((rangeEndUtc - rangeStartUtc).TotalDays > 7)
+            throw new ArgumentException("Timeline range cannot exceed 7 days.");
+
+        var startStr = rangeStartUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var endStr = rangeEndUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var url =
+            $"api/calendar/timeline?start={Uri.EscapeDataString(startStr)}&end={Uri.EscapeDataString(endStr)}";
+
+        var response = await _http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Timeline request failed with status {(int)response.StatusCode} {response.ReasonPhrase}.");
+        }
+
+        return await response.Content.ReadFromJsonAsync<EquipmentTimelineEnvelopeDto>();
+    }
 }

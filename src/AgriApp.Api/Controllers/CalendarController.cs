@@ -38,4 +38,25 @@ public class CalendarController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Equipment swimlanes with work blocks, 30-minute travel buffers, and breakdown intervals from time logs.
+    /// </summary>
+    [HttpGet("timeline")]
+    public async Task<IActionResult> GetTimeline(
+        [FromQuery] DateTime start,
+        [FromQuery] DateTime end)
+    {
+        if (end <= start)
+            return BadRequest(new { error = "End date must be after start date." });
+
+        if ((end - start).TotalDays > 7)
+            return BadRequest(new { error = "Timeline range cannot exceed 7 days." });
+
+        var result = await _calendarService.GetEquipmentTimelineAsync(
+            DateTime.SpecifyKind(start, DateTimeKind.Utc),
+            DateTime.SpecifyKind(end, DateTimeKind.Utc));
+
+        return Ok(result);
+    }
 }

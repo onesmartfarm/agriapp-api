@@ -9,6 +9,11 @@ public interface ICalendarService
     /// Get center capacity for the given date range (read-only, AsNoTracking).
     /// </summary>
     Task<List<CapacityScheduleItem>> GetCenterCapacityAsync(DateTime startDate, DateTime endDate);
+
+    /// <summary>
+    /// GET /api/calendar/timeline — equipment swimlanes with work, travel buffers, and breakdown logs.
+    /// </summary>
+    Task<EquipmentTimelineEnvelopeDto?> GetEquipmentTimelineAsync(DateTime rangeStartUtc, DateTime rangeEndUtc);
 }
 
 /// <summary>
