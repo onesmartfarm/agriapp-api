@@ -253,8 +253,10 @@ public record InquiryResponse(
     int Id,
     int CustomerId,
     string CustomerName,
-    int EquipmentId,
-    string EquipmentName,
+    int? ServiceActivityId,
+    string? ServiceActivityName,
+    int? EquipmentId,
+    string? EquipmentName,
     int SalespersonId,
     string SalespersonName,
     string Status,
@@ -265,13 +267,15 @@ public record InquiryResponse(
 
 public record CreateInquiryRequest
 {
-    [Required, Range(1, int.MaxValue, ErrorMessage = "Customer ID is required")]
+    [Required, Range(1, int.MaxValue, ErrorMessage = "Customer is required")]
     public int CustomerId { get; set; }
 
-    [Required, Range(1, int.MaxValue, ErrorMessage = "Equipment ID is required")]
-    public int EquipmentId { get; set; }
+    [Required, Range(1, int.MaxValue, ErrorMessage = "Service activity is required")]
+    public int ServiceActivityId { get; set; }
 
-    [Required, Range(1, int.MaxValue, ErrorMessage = "Salesperson ID is required")]
+    public int? EquipmentId { get; set; }
+
+    [Required, Range(1, int.MaxValue, ErrorMessage = "Salesperson is required")]
     public int SalespersonId { get; set; }
 
     public int? CenterId { get; set; }

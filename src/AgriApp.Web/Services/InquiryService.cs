@@ -48,6 +48,7 @@ public class InquiryService : IInquiryService
             var response = await _http.PostAsJsonAsync("api/inquiries", new
             {
                 request.CustomerId,
+                request.ServiceActivityId,
                 request.EquipmentId,
                 request.SalespersonId,
                 request.CenterId

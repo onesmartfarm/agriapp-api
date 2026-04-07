@@ -21,6 +21,7 @@ public class InquiryRepository
         => await _context.Inquiries
             .AsNoTracking()
             .Include(i => i.Customer)
+            .Include(i => i.ServiceActivity)
             .Include(i => i.Equipment)
             .Include(i => i.Salesperson)
             .ToListAsync();
@@ -29,6 +30,7 @@ public class InquiryRepository
         => await _context.Inquiries
             .AsNoTracking()
             .Include(i => i.Customer)
+            .Include(i => i.ServiceActivity)
             .Include(i => i.Equipment)
             .Include(i => i.Salesperson)
             .Where(i => i.CustomerId == customerId)
@@ -52,6 +54,7 @@ public class InquiryRepository
         => await _context.Inquiries
             .AsNoTracking()
             .Include(i => i.Customer)
+            .Include(i => i.ServiceActivity)
             .Include(i => i.Equipment)
             .Include(i => i.Salesperson)
             .FirstOrDefaultAsync(i => i.Id == id);

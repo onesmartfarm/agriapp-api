@@ -2,18 +2,22 @@ using AgriApp.Application.DTOs;
 using AgriApp.Core.Entities;
 using AgriApp.Core.Enums;
 using AgriApp.Core.Interfaces;
+using AgriApp.Infrastructure.Data;
 using AgriApp.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace AgriApp.Application.Services;
 
 public class InquiryService
 {
     private readonly InquiryRepository _repo;
+    private readonly AgriDbContext _db;
     private readonly ICurrentUser _currentUser;
 
-    public InquiryService(InquiryRepository repo, ICurrentUser currentUser)
+    public InquiryService(InquiryRepository repo, AgriDbContext db, ICurrentUser currentUser)
     {
         _repo = repo;
+        _db = db;
         _currentUser = currentUser;
     }
 
@@ -41,16 +45,35 @@ public class InquiryService
         return rows.Select(i => ToApiResponse(i, centerNames)).ToList();
     }
 
-    public async Task<Inquiry> CreateAsync(int customerId, int equipmentId, int salespersonId, int centerId)
+    public async Task<Inquiry> CreateAsync(CreateInquiryRequest request, int centerId)
     {
-        if (_currentUser.Role == Role.Sales && salespersonId != _currentUser.UserId)
+        if (_currentUser.Role == Role.Sales && request.SalespersonId != _currentUser.UserId)
             throw new UnauthorizedAccessException("Sales users can only create inquiries for themselves.");
+
+        var activity = await _db.ServiceActivities.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == request.ServiceActivityId && a.CenterId == centerId);
+        if (activity == null)
+            throw new InvalidOperationException("Service activity not found for this center.");
+
+        if (request.EquipmentId is int eqId)
+        {
+            var eq = await _db.Equipment.AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == eqId && e.CenterId == centerId);
+            if (eq == null)
+                throw new InvalidOperationException("Equipment not found for this center.");
+        }
+
+        var customerOk = await _db.Customers.AsNoTracking()
+            .AnyAsync(c => c.Id == request.CustomerId && c.CenterId == centerId);
+        if (!customerOk)
+            throw new InvalidOperationException("Customer not found for this center.");
 
         var inquiry = new Inquiry
         {
-            CustomerId = customerId,
-            EquipmentId = equipmentId,
-            SalespersonId = salespersonId,
+            CustomerId = request.CustomerId,
+            ServiceActivityId = request.ServiceActivityId,
+            EquipmentId = request.EquipmentId,
+            SalespersonId = request.SalespersonId,
             CenterId = centerId,
             Status = InquiryStatus.New,
             CreatedAt = DateTime.UtcNow
@@ -70,8 +93,10 @@ public class InquiryService
             Id = i.Id,
             CustomerId = i.CustomerId,
             CustomerName = i.Customer?.Name ?? string.Empty,
+            ServiceActivityId = i.ServiceActivityId,
+            ServiceActivityName = i.ServiceActivity?.Name,
             EquipmentId = i.EquipmentId,
-            EquipmentName = i.Equipment?.Name ?? string.Empty,
+            EquipmentName = i.Equipment?.Name,
             SalespersonId = i.SalespersonId,
             SalespersonName = i.Salesperson?.Name ?? string.Empty,
             Status = i.Status.ToString(),

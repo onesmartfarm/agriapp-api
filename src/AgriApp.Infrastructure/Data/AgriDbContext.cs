@@ -208,10 +208,16 @@ public class AgriDbContext : DbContext
                   .HasForeignKey(e => e.CustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(e => e.ServiceActivity)
+                  .WithMany(a => a.Inquiries)
+                  .HasForeignKey(e => e.ServiceActivityId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasOne(e => e.Equipment)
                   .WithMany(eq => eq.Inquiries)
                   .HasForeignKey(e => e.EquipmentId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(e => e.Salesperson)
                   .WithMany(u => u.SalesInquiries)

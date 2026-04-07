@@ -5,6 +5,7 @@
 @inject IUserService UserService
 @inject ICustomerService CustomerService
 @inject ICenterService CenterService
+@inject IServiceActivityService ServiceActivityService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 
@@ -16,13 +17,53 @@
                 <DataAnnotationsValidator />
                 <MudStack Spacing="3">
 
+                    @if (_isSuperUser)
+                    {
+                        <MudSelect T="int" Value="@(_createForm.CenterId ?? 0)" ValueChanged="OnInquiryCenterChangedAsync"
+                                   Label="Center (required to load services)"
+                                   FullWidth="true"
+                                   Disabled="_loadingLookups">
+                            <MudSelectItem T="int" Value="0">— Select center —</MudSelectItem>
+                            @foreach (var c in _centerList)
+                            {
+                                <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    <MudSelect T="int" Value="_createForm.ServiceActivityId" ValueChanged="OnServiceActivityChangedAsync"
+                               Label="Service activity"
+                               FullWidth="true"
+                               Disabled="_loadingLookups || EffectiveCenterId <= 0"
+                               For="@(() => _createForm.ServiceActivityId)">
+                        <MudSelectItem T="int" Value="0">— Select service —</MudSelectItem>
+                        @foreach (var a in _serviceActivities)
+                        {
+                            <MudSelectItem T="int" Value="@a.Id">@a.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudNumericField Value="_suggestedRate"
+                                     Label="Suggested rate (from service)"
+                                     Format="N2"
+                                     FullWidth="true"
+                                     Disabled="true"
+                                     HelperText="@_rateHelperText" />
+
+                    @if (_createForm.ServiceActivityId > 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            Service selected — optional equipment list shows implements/tools for this center.
+                        </MudAlert>
+                    }
+
                     <MudSelect T="int" @bind-Value="_createForm.CustomerId"
                                Label="Customer"
                                FullWidth="true"
                                Disabled="_loadingLookups"
                                For="@(() => _createForm.CustomerId)">
-                        <MudSelectItem T="int" Value="0">— Select Customer —</MudSelectItem>
-                        @foreach (var c in _customerList)
+                        <MudSelectItem T="int" Value="0">— Select customer —</MudSelectItem>
+                        @foreach (var c in _customerList.Where(x => EffectiveCenterId <= 0 || x.CenterId == EffectiveCenterId))
                         {
                             <MudSelectItem T="int" Value="@c.Id">
                                 @c.Name @(c.Phone != null ? $"({c.Phone})" : "")
@@ -30,15 +71,14 @@
                         }
                     </MudSelect>
 
-                    <MudSelect T="int" @bind-Value="_createForm.EquipmentId"
-                               Label="Equipment"
+                    <MudSelect T="int?" @bind-Value="_createForm.EquipmentId"
+                               Label="Requested equipment (optional)"
                                FullWidth="true"
-                               Disabled="_loadingLookups"
-                               For="@(() => _createForm.EquipmentId)">
-                        <MudSelectItem T="int" Value="0">— Select Equipment —</MudSelectItem>
-                        @foreach (var eq in _equipmentList)
+                               Disabled="_loadingLookups || EffectiveCenterId <= 0">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                        @foreach (var eq in RequestedEquipmentOptions)
                         {
-                            <MudSelectItem T="int" Value="@eq.Id">
+                            <MudSelectItem T="int?" Value="@((int?)eq.Id)">
                                 @eq.Name (@eq.Category · @eq.CurrencySymbol@eq.HourlyRate.ToString("N0")/hr)
                             </MudSelectItem>
                         }
@@ -49,7 +89,7 @@
                                FullWidth="true"
                                Disabled="_loadingLookups"
                                For="@(() => _createForm.SalespersonId)">
-                        <MudSelectItem T="int" Value="0">— Select Salesperson —</MudSelectItem>
+                        <MudSelectItem T="int" Value="0">— Select salesperson —</MudSelectItem>
                         @foreach (var u in _salesList)
                         {
                             <MudSelectItem T="int" Value="@u.Id">
@@ -57,20 +97,6 @@
                             </MudSelectItem>
                         }
                     </MudSelect>
-
-                    @if (_isSuperUser)
-                    {
-                        <MudSelect T="int?" @bind-Value="_createForm.CenterId"
-                                   Label="Center"
-                                   FullWidth="true"
-                                   Disabled="_loadingLookups">
-                            <MudSelectItem T="int?" Value="@((int?)null)">— Use token default —</MudSelectItem>
-                            @foreach (var c in _centerList)
-                            {
-                                <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                    }
 
                     <ValidationSummary />
                     @if (!string.IsNullOrEmpty(_error))
@@ -142,10 +168,30 @@
     private List<EquipmentResponse> _equipmentList = new();
     private List<UserResponse> _salesList = new();
     private List<CenterResponse> _centerList = new();
+    private List<ServiceActivityRow> _serviceActivities = new();
     private bool _isSuperUser;
-    private bool _saving = false;
-    private bool _loadingLookups = false;
+    private int _tokenCenterId;
+    private bool _saving;
+    private bool _loadingLookups;
     private string? _error;
+    private decimal _suggestedRate;
+    private string _rateHelperText = "Select a service activity to see the catalog rate.";
+
+    private int EffectiveCenterId =>
+        _isSuperUser ? (_createForm.CenterId ?? 0) : _tokenCenterId;
+
+    private IEnumerable<EquipmentResponse> RequestedEquipmentOptions
+    {
+        get
+        {
+            if (EffectiveCenterId <= 0)
+                return Enumerable.Empty<EquipmentResponse>();
+            var q = _equipmentList.Where(e => e.CenterId == EffectiveCenterId);
+            if (_createForm.ServiceActivityId > 0)
+                q = q.Where(e => e.IsImplement);
+            return q.OrderBy(e => e.Name);
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -161,8 +207,9 @@
         {
             var auth = await AuthStateProvider.GetAuthenticationStateAsync();
             _isSuperUser = auth.User.IsInRole("SuperUser");
-            if (int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var centerFromToken) && centerFromToken > 0)
-                _createForm.CenterId = centerFromToken;
+            _tokenCenterId = int.TryParse(auth.User.FindFirst("CenterId")?.Value, out var tc) ? tc : 0;
+            if (!_isSuperUser && _tokenCenterId > 0)
+                _createForm.CenterId = _tokenCenterId;
 
             var customerTask = CustomerService.GetAllAsync();
             var eqTask = EquipmentService.GetAllAsync();
@@ -175,6 +222,9 @@
             _salesList = (await userTask)
                 .Where(u => u.Role is "Sales" or "Manager" or "SuperUser")
                 .ToList();
+
+            await RefreshServiceActivitiesAsync();
+            SyncSuggestedRateFromSelection();
         }
         catch (Exception ex)
         {
@@ -184,6 +234,55 @@
         {
             _loadingLookups = false;
         }
+    }
+
+    private async Task RefreshServiceActivitiesAsync()
+    {
+        if (EffectiveCenterId <= 0)
+        {
+            _serviceActivities = new List<ServiceActivityRow>();
+            return;
+        }
+
+        try
+        {
+            _serviceActivities = await ServiceActivityService.GetAllAsync(EffectiveCenterId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load service activities: {ex.Message}", Severity.Warning);
+            _serviceActivities = new List<ServiceActivityRow>();
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private async Task OnInquiryCenterChangedAsync(int value)
+    {
+        _createForm.CenterId = value == 0 ? null : value;
+        _createForm.ServiceActivityId = 0;
+        _createForm.EquipmentId = null;
+        _suggestedRate = 0;
+        _rateHelperText = "Select a service activity to see the catalog rate.";
+        await RefreshServiceActivitiesAsync();
+    }
+
+    private async Task OnServiceActivityChangedAsync(int value)
+    {
+        _createForm.ServiceActivityId = value;
+        SyncSuggestedRateFromSelection();
+        if (_createForm.EquipmentId is int eqId && RequestedEquipmentOptions.All(e => e.Id != eqId))
+            _createForm.EquipmentId = null;
+        await Task.CompletedTask;
+    }
+
+    private void SyncSuggestedRateFromSelection()
+    {
+        var a = _serviceActivities.FirstOrDefault(x => x.Id == _createForm.ServiceActivityId);
+        _suggestedRate = a?.BaseRatePerHour ?? 0;
+        _rateHelperText = a == null
+            ? "Select a service activity to see the catalog rate."
+            : $"Base rate for “{a.Name}” at this center.";
     }
 
     private async Task SaveCreate()

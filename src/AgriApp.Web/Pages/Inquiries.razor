@@ -20,7 +20,7 @@
 
                 @if (_loading)
                 {
-                    <MudProgressCircular IsIndeterminate="true" />
+                    <MudProgressCircular indeterminate="true" />
                 }
                 else if (_inquiries == null || _inquiries.Count == 0)
                 {
@@ -32,7 +32,16 @@
                         <Columns>
                             <PropertyColumn Property="x => x.Id" Title="ID" Sortable="true" />
                             <PropertyColumn Property="x => x.CustomerName" Title="Customer" Sortable="true" />
-                            <PropertyColumn Property="x => x.EquipmentName" Title="Equipment" Sortable="true" />
+                            <TemplateColumn Title="Service" Sortable="true" SortBy="@(x => x.ServiceActivityName)">
+                                <CellTemplate Context="svcCtx">
+                                    @(string.IsNullOrWhiteSpace(svcCtx.Item.ServiceActivityName) ? "—" : svcCtx.Item.ServiceActivityName)
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Requested equipment" Sortable="true" SortBy="@(x => x.EquipmentName)">
+                                <CellTemplate Context="eqCtx">
+                                    @(string.IsNullOrWhiteSpace(eqCtx.Item.EquipmentName) ? "—" : eqCtx.Item.EquipmentName)
+                                </CellTemplate>
+                            </TemplateColumn>
                             <PropertyColumn Property="x => x.SalespersonName" Title="Salesperson" Sortable="true" />
                             <PropertyColumn Property="x => x.CenterName" Title="Center" Sortable="true" />
                             <PropertyColumn Property="x => x.Status" Title="Status" Sortable="true">
@@ -45,6 +54,14 @@
                             <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd" Sortable="true" />
                             <TemplateColumn Title="Actions">
                                 <CellTemplate Context="actCtx">
+                                    <AuthorizeView Roles="Supervisor,Manager,SuperUser">
+                                        <Authorized Context="woShortcutAuth">
+                                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Assignment"
+                                                           title="Create work order from inquiry"
+                                                           Color="Color.Primary"
+                                                           OnClick="() => OpenWorkOrderFromInquiry(actCtx.Item)" />
+                                        </Authorized>
+                                    </AuthorizeView>
                                     <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.SwapHoriz"
                                                    title="Update Status"
                                                    Color="Color.Warning"
@@ -107,6 +124,23 @@
             { x => x.CurrentStatus, inquiry.Status }
         };
         var dialog = await DialogService.ShowAsync<InquiryDialog>("Update Inquiry Status", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await LoadInquiries();
+    }
+
+    private async Task OpenWorkOrderFromInquiry(InquiryResponse inquiry)
+    {
+        var parameters = new DialogParameters<WorkOrderDialog>
+        {
+            { x => x.IsCreate, true },
+            { x => x.InitialCenterId, inquiry.CenterId },
+            { x => x.InitialCustomerId, inquiry.CustomerId },
+            { x => x.InitialServiceActivityId, inquiry.ServiceActivityId },
+            { x => x.InitialInquiryId, inquiry.Id },
+            { x => x.InitialEquipmentId, inquiry.EquipmentId }
+        };
+        var dialog = await DialogService.ShowAsync<WorkOrderDialog>("Create Work Order from Inquiry", parameters);
         var result = await dialog.Result;
         if (result is { Canceled: false })
             await LoadInquiries();

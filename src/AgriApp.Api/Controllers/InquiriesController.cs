@@ -49,12 +49,15 @@ public class InquiriesController : ControllerBase
                 centerId = _currentUser.CenterId
                     ?? throw new InvalidOperationException("User must belong to a center");
 
-            var inquiry = await _service.CreateAsync(
-                request.CustomerId, request.EquipmentId, request.SalespersonId, centerId);
+            var inquiry = await _service.CreateAsync(request, centerId);
 
             var dto = await _service.GetByIdAsync(inquiry.Id)
                 ?? throw new InvalidOperationException("Failed to load inquiry after create.");
             return Created($"/api/inquiries/{inquiry.Id}", dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
         catch (UnauthorizedAccessException ex)
         {

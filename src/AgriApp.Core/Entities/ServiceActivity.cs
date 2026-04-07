@@ -14,4 +14,5 @@ public class ServiceActivity : ICenterScoped, IAuditable
 
     public Center Center { get; set; } = null!;
     public ICollection<WorkOrder> WorkOrders { get; set; } = new List<WorkOrder>();
+    public ICollection<Inquiry> Inquiries { get; set; } = new List<Inquiry>();
 }

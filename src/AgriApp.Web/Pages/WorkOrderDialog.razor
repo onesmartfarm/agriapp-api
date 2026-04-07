@@ -285,6 +285,23 @@
     [Parameter]
     public int WorkOrderId { get; set; }
 
+    /// <summary>Optional prefill when opening from an inquiry (service-first bridge).</summary>
+    [Parameter]
+    public int? InitialCustomerId { get; set; }
+
+    [Parameter]
+    public int? InitialServiceActivityId { get; set; }
+
+    [Parameter]
+    public int? InitialInquiryId { get; set; }
+
+    [Parameter]
+    public int? InitialEquipmentId { get; set; }
+
+    /// <summary>Center for the inquiry/work order (ensures lookups match when prefilling).</summary>
+    [Parameter]
+    public int? InitialCenterId { get; set; }
+
     private WorkOrderFormRequest _form = new();
     private WorkOrderStatusUpdateRequest _statusForm = new();
     private WorkOrderDetail? _detail;
@@ -389,6 +406,39 @@
                 _form.CustomerId = _detail.CustomerId;
                 if (!string.IsNullOrWhiteSpace(_detail.CurrencySymbol))
                     _centerCurrencySymbol = _detail.CurrencySymbol;
+            }
+        }
+        else if (IsCreate)
+        {
+            await ApplyInquiryShortcutPrefillAsync();
+        }
+    }
+
+    private async Task ApplyInquiryShortcutPrefillAsync()
+    {
+        if (InitialCenterId is > 0)
+        {
+            _form.CenterId = InitialCenterId;
+            await RefreshServiceActivitiesAndCurrencyAsync();
+        }
+
+        if (InitialCustomerId is > 0)
+            _form.CustomerId = InitialCustomerId;
+        if (InitialInquiryId is > 0)
+            _form.InquiryId = InitialInquiryId;
+
+        if (InitialServiceActivityId is > 0 && EffectiveCenterId > 0)
+            await OnServiceActivityChangedAsync(InitialServiceActivityId);
+
+        if (InitialEquipmentId is > 0)
+        {
+            var eq = _equipmentList.FirstOrDefault(e => e.Id == InitialEquipmentId.Value);
+            if (eq != null)
+            {
+                if (eq.IsImplement)
+                    _form.ImplementId = eq.Id;
+                else
+                    _form.TractorId = eq.Id;
             }
         }
     }
